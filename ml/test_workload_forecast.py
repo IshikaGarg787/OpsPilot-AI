@@ -3,10 +3,25 @@ import pandas as pd
 
 from pydantic import ValidationError
 
-from ml.resolution_api import WorkloadForecastRequest, WorkloadRecord, _live_daily_series, workload_forecast_health
+from ml.resolution_api import WorkloadForecastRequest, WorkloadRecord, _high_load_threshold, _is_high_load, _live_daily_series, workload_forecast_health
 
 
 class LiveWorkloadDataTests(unittest.TestCase):
+    def test_zero_heavy_history_does_not_make_zero_threshold_high_load(self):
+        dates = pd.date_range("2025-01-01", periods=140, freq="D")
+        daily = pd.Series(0.0, index=dates)
+        threshold = _high_load_threshold(daily)
+        self.assertEqual(threshold, 0.0)
+        self.assertFalse(_is_high_load(0.0, threshold))
+
+    def test_high_load_requires_demand_above_positive_weekday_baseline(self):
+        dates = pd.date_range("2025-01-01", periods=140, freq="D")
+        daily = pd.Series([0.0 if i % 3 else 4.0 for i in range(len(dates))], index=dates)
+        threshold = _high_load_threshold(daily)
+        self.assertGreater(threshold, 0.0)
+        self.assertFalse(_is_high_load(threshold, threshold))
+        self.assertTrue(_is_high_load(threshold + 0.1, threshold))
+
     def test_daily_aggregate_fills_missing_days(self):
         dates = pd.date_range("2024-01-01", periods=125, freq="D")
         records = [WorkloadRecord(date=d.date().isoformat(), ticket_count=5) for i, d in enumerate(dates) if i != 3]

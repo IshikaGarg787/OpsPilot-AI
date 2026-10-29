@@ -4,12 +4,14 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js';
 import { SlaPolicyModel } from '../models/SlaPolicy.js';
 import { SlaEventModel } from '../models/SlaEvent.js';
-import { auditPolicy, getSlaOverview, seedDevelopmentSlaPolicies } from '../services/slaManagementService.js';
+import { auditPolicy, getOperationsDashboard, getSlaOverview, seedDevelopmentSlaPolicies } from '../services/slaManagementService.js';
+import { databaseStatus } from '../config/database.js';
 
 const router = Router();
 export const slaAuthorization = [requireAuth, requireRole('admin')] as const;
 router.use(...slaAuthorization);
 export const policySchema = z.object({ name: z.string().trim().min(2).max(120), priority: z.string().trim().min(1).max(100), firstResponseMinutes: z.number().int().positive().max(525600), resolutionMinutes: z.number().int().positive().max(525600), enabled: z.boolean().default(true) }).strict();
+export const operationsQuerySchema = z.object({ range: z.enum(['7', '30', '90']).default('30'), priority: z.string().trim().max(100).optional(), category: z.string().trim().max(100).optional() }).strict();
 
 router.get('/policies', asyncHandler(async (req, res) => {
   await seedDevelopmentSlaPolicies(req.user!._id);
@@ -39,6 +41,13 @@ router.patch('/policies/:id', asyncHandler(async (req, res) => {
 }));
 router.get('/overview', asyncHandler(async (_req, res) => {
   res.json({ success: true, data: await getSlaOverview() });
+}));
+router.get('/operations', asyncHandler(async (req, res) => {
+  if (!databaseStatus().connected) throw new HttpError(503, 'Dashboard data is temporarily unavailable.', 'DATABASE_UNAVAILABLE');
+  const query = operationsQuerySchema.parse(req.query);
+  const to = new Date();
+  const from = new Date(to.getTime() - Number(query.range) * 24 * 60 * 60 * 1000);
+  res.json({ success: true, data: await getOperationsDashboard({ from, to, priority: query.priority || undefined, category: query.category || undefined }) });
 }));
 router.get('/events', asyncHandler(async (_req, res) => {
   const events = await SlaEventModel.find().sort({ createdAt: -1 }).limit(300).lean();
