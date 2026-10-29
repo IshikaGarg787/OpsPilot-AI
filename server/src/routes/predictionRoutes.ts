@@ -8,6 +8,7 @@ import { listQuerySchema, resolutionPredictionSchema, triagePipelineSchema, work
 import { z } from 'zod';
 import { requireRole } from '../middleware/auth.js';
 import { normalizedRole } from '../models/User.js';
+import { backfillSavedTicketPredictions } from '../services/ticketPredictionHistory.js';
 import { TicketModel } from '../models/Ticket.js';
 import { UserModel } from '../models/User.js';
 import { calculateTicketSlaForRecord } from '../services/slaPolicy.js';
@@ -41,6 +42,9 @@ const riskResponseSchema = z.object({
 
 const workloadResponseSchema = z.object({
   model_id: z.string(),
+  model_name: z.string(),
+  mode: z.string(),
+  generated_at: z.string(),
   history_start: z.string(),
   history_end: z.string(),
   history_days: z.number().int().positive(),
@@ -48,11 +52,15 @@ const workloadResponseSchema = z.object({
   horizon: z.union([z.literal(7), z.literal(14)]),
   forecast: z.array(z.object({
     date: z.string(),
+    weekday: z.string(),
     forecast: z.number().finite().nonnegative(),
     planning_low: z.number().finite().nonnegative(),
     planning_high: z.number().finite().nonnegative(),
+    high_load_threshold: z.number().finite().nonnegative(),
     high_load_flag: z.boolean(),
   })).min(7).max(14),
+  recent_history: z.array(z.object({ date: z.string(), ticket_count: z.number().finite().nonnegative() })),
+  notes: z.array(z.string()),
 });
 
 const serialize = (prediction: any) => ({
@@ -101,12 +109,41 @@ router.get('/workload/health', asyncHandler(async (_req, res) => {
   res.json({ success: true, data: { ...health.data, available: health.available }, message: health.available ? 'Workload forecast service is ready.' : 'Workload forecast service is unavailable.' });
 }));
 
+router.get('/workload/history', requireRole('admin'), asyncHandler(async (_req, res) => {
+  requireDatabase();
+  const daily = await TicketModel.aggregate([
+    { $match: { ownerRole: 'customer' } },
+    { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'UTC' } }, ticket_count: { $sum: 1 } } },
+    { $sort: { _id: 1 } },
+  ]);
+  const today = new Date();
+  const end = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - 1));
+  const firstObserved = daily.length ? new Date(`${daily[0]._id}T00:00:00Z`) : null;
+  const start = firstObserved && firstObserved <= end ? firstObserved : new Date(end.getTime() - 119 * 86400000);
+  const dailyCounts = new Map(daily.map((row: any) => [row._id, row.ticket_count]));
+  const records: Array<{ date: string; ticket_count: number }> = [];
+  for (let time = start.getTime(); daily.length && time <= end.getTime(); time += 86400000) {
+    const date = new Date(time).toISOString().slice(0, 10);
+    records.push({ date, ticket_count: dailyCounts.get(date) ?? 0 });
+  }
+  const historyDays = records.length;
+  const templateStart = new Date(end.getTime() - 179 * 86400000).toISOString().slice(0, 10);
+  res.json({ success: true, data: { records, historyDays, ticketTotal: records.reduce((sum, row) => sum + row.ticket_count, 0), enoughHistory: historyDays >= 120, firstTicketDate: daily[0]?._id ?? null, lastCompleteDate: records.at(-1)?.date ?? null, templateStart, templateEnd: end.toISOString().slice(0, 10) }, message: daily.length ? 'Daily ticket history loaded from customer tickets in this workspace.' : 'No ticket history exists yet; a dated template range is ready for external data.' });
+}));
+
 router.post('/workload', asyncHandler(async (req, res) => {
+  requireDatabase();
   const input = workloadForecastSchema.parse(req.body);
   try {
-    const result = await forecastWorkload(input.records, input.horizon);
-    workloadResponseSchema.parse(result);
-    res.json({ success: true, data: result, message: 'Workload forecast generated.' });
+    const result = workloadResponseSchema.parse(await forecastWorkload(input.records, input.horizon));
+    const forecastRows = result.forecast.map((day) => ({ date: day.date, forecast: day.forecast, planningLow: day.planning_low, planningHigh: day.planning_high, highLoad: day.high_load_flag }));
+    const saved = await PredictionModel.create({
+      userId: req.user!._id, modelId: 'workload-forecasting', modelVersion: result.model_id, predictionType: 'workload_forecast',
+      input: { issueCreated: new Date(), priority: 'Not applicable', issueType: 'Workspace workload', project: 'Incoming ticket volume' },
+      output: { workload: { historyStart: result.history_start, historyEnd: result.history_end, historyDays: result.history_days, horizon: result.horizon, ticketTotal: result.ticket_total, expectedTickets: forecastRows.reduce((sum, day) => sum + day.forecast, 0), highLoadDays: forecastRows.filter((day) => day.highLoad).length, modelVersion: result.model_id, source: input.source, forecast: forecastRows } },
+      status: 'success',
+    });
+    res.json({ success: true, data: { ...result, prediction_id: saved._id.toString(), source: input.source }, message: 'Workload forecast generated and saved to prediction history.' });
   } catch (error) {
     if (error instanceof MlServiceError) throw new HttpError(error.status, error.message, error.code);
     if (error instanceof z.ZodError) throw new HttpError(503, 'The workload service returned an invalid response.', 'ML_INVALID_RESPONSE');
@@ -136,14 +173,17 @@ router.post('/triage', requireRole('admin'), asyncHandler(async (req, res) => {
     const expectedTickets = workload.forecast.reduce((total, day) => total + day.forecast, 0);
     const ticketSla = linkedTicket ? calculateTicketSlaForRecord(linkedTicket) : null;
     const slaNeedsReview = Boolean(ticketSla && [ticketSla.response.status, ticketSla.resolution.status].some((status) => status === 'at_risk' || status === 'breached'));
-    const activeMembers = await UserModel.find({ role: 'it_team' }).select('name email').sort({ name: 1 }).lean();
+    const activeMembers = await UserModel.find({ role: 'it_team', availability: { $ne: 'unavailable' } }).select('name email skills availability').sort({ name: 1 }).lean();
     const memberLoads = await TicketModel.aggregate([
-      { $match: { status: { $nin: ['resolved', 'closed'] }, assignedTo: { $ne: null }, ...(linkedTicket ? { _id: { $ne: linkedTicket._id } } : {}) } },
+      { $match: { status: { $in: ['assigned', 'in_progress'] }, assignedTo: { $ne: null }, ...(linkedTicket ? { _id: { $ne: linkedTicket._id } } : {}) } },
       { $group: { _id: '$assignedTo', activeTickets: { $sum: 1 } } },
     ]);
     const loadByMember = new Map(memberLoads.map((item: any) => [String(item._id), item.activeTickets as number]));
-    const assignmentRecommendation = activeMembers.length
-      ? [...activeMembers].sort((a: any, b: any) => (loadByMember.get(String(a._id)) ?? 0) - (loadByMember.get(String(b._id)) ?? 0) || a.name.localeCompare(b.name))[0]
+    const issueTerms = `${input.issue_type} ${input.issue_proj}`.toLowerCase().split(/[^a-z0-9]+/).filter((term) => term.length >= 3);
+    const freeMembers = activeMembers.filter((member: any) => (loadByMember.get(String(member._id)) ?? 0) === 0);
+    const skillFit = (member: any) => (member.skills ?? []).reduce((score: number, skill: string) => score + (issueTerms.some((term) => skill.toLowerCase().includes(term) || term.includes(skill.toLowerCase())) ? 1 : 0), 0);
+    const assignmentRecommendation = freeMembers.length
+      ? [...freeMembers].sort((a: any, b: any) => skillFit(b) - skillFit(a) || a.name.localeCompare(b.name))[0]
       : null;
     const recommendReview = risk.flagged_for_review || slaNeedsReview;
     const recommendedPriority = recommendReview && /^(low|lowest|medium)$/i.test(input.issue_priority.trim())
@@ -191,7 +231,7 @@ router.post('/triage', requireRole('admin'), asyncHandler(async (req, res) => {
       output: {
         duration: duration.duration,
         unit: duration.unit,
-        delayRisk: { probability: risk.risk_probability, category: risk.risk_category, flaggedForReview: risk.flagged_for_review, decisionThreshold: risk.decision_threshold, targetThresholdHours: risk.target_threshold_hours, modelVersion: risk.model_version },
+        delayRisk: { probability: risk.risk_probability, category: risk.risk_category, flaggedForReview: risk.flagged_for_review, decisionThreshold: risk.decision_threshold, targetThresholdHours: risk.target_threshold_hours, modelVersion: risk.model_version, ...(riskExplanation ? { explanation: riskExplanation } : {}) },
         workload: {
           historyStart: workload.history_start,
           historyEnd: workload.history_end,
@@ -201,6 +241,7 @@ router.post('/triage', requireRole('admin'), asyncHandler(async (req, res) => {
           expectedTickets,
           highLoadDays: workload.forecast.filter((day) => day.high_load_flag).length,
           modelVersion: workload.model_id,
+          source: input.workload_source,
           forecast: workload.forecast.map((day) => ({ date: day.date, forecast: day.forecast, planningLow: day.planning_low, planningHigh: day.planning_high, highLoad: day.high_load_flag })),
         },
       },
@@ -216,9 +257,11 @@ router.post('/triage', requireRole('admin'), asyncHandler(async (req, res) => {
 
 router.get('/', asyncHandler(async (req, res) => {
   requireDatabase();
+  await backfillSavedTicketPredictions(req.user!);
   const query = listQuerySchema.parse(req.query);
-  const customer = normalizedRole(req.user!) === 'customer';
-  const filter: Record<string, unknown> = customer ? customerPredictionFilter(req.user!._id) : { userId: req.user!._id };
+  const role = normalizedRole(req.user!);
+  const customer = role === 'customer';
+  const filter: Record<string, unknown> = role === 'admin' ? {} : customer ? customerPredictionFilter(req.user!._id) : { userId: req.user!._id };
   if (query.modelId && (!customer || query.modelId === 'resolution-time')) filter.modelId = query.modelId;
   if (query.from || query.to) filter.createdAt = { ...(query.from ? { $gte: new Date(query.from) } : {}), ...(query.to ? { $lte: new Date(query.to) } : {}) };
   const [items, total] = await Promise.all([
@@ -230,9 +273,12 @@ router.get('/', asyncHandler(async (req, res) => {
 
 router.get('/:id', asyncHandler(async (req, res) => {
   requireDatabase();
-  const filter = normalizedRole(req.user!) === 'customer'
-    ? { _id: req.params.id, ...customerPredictionFilter(req.user!._id) }
-    : { _id: req.params.id, userId: req.user!._id };
+  const role = normalizedRole(req.user!);
+  const filter = role === 'admin'
+    ? { _id: req.params.id }
+    : role === 'customer'
+      ? { _id: req.params.id, ...customerPredictionFilter(req.user!._id) }
+      : { _id: req.params.id, userId: req.user!._id };
   const prediction = await PredictionModel.findOne(filter).lean();
   if (!prediction) throw new HttpError(404, 'Prediction not found.', 'PREDICTION_NOT_FOUND');
   res.json({ success: true, data: { prediction: serialize(prediction) } });

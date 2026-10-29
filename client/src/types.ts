@@ -42,15 +42,16 @@ export interface Prediction {
   modelId: string;
   modelVersion?: string;
   predictionType: string;
-  input: { issueCreated: string; priority: string; issueType: string; project: string; complaint?: string };
+  input: { issueCreated: string; priority: string; issueType: string; project: string; complaint?: string; ticketId?: string };
   output?: {
     duration?: number;
     unit?: string;
-    delayRisk?: { probability: number; category: 'low' | 'medium' | 'high'; flaggedForReview: boolean; decisionThreshold: number; targetThresholdHours: number; modelVersion?: string };
-    workload?: { historyStart: string; historyEnd: string; historyDays: number; horizon: 7 | 14; ticketTotal: number; expectedTickets: number; highLoadDays: number; forecast: Array<{ date: string; forecast: number; planningLow: number; planningHigh: number; highLoad: boolean }> };
+    delayRisk?: { probability: number; category: 'low' | 'medium' | 'high'; flaggedForReview: boolean; decisionThreshold: number; targetThresholdHours: number; modelVersion?: string; explanation?: { summary?: string; historicalEvidence?: Array<{ factor: string; value: string; historicalTickets: number; historicalDelayRate: number }>; evidenceCutoff?: string; interpretation?: string } };
+    workload?: { historyStart: string; historyEnd: string; historyDays: number; horizon: 7 | 14; ticketTotal: number; expectedTickets: number; highLoadDays: number; source?: 'workspace_ticket_history' | 'uploaded_csv' | 'triage'; forecast: Array<{ date: string; forecast: number; planningLow: number; planningHigh: number; highLoad: boolean }> };
   };
   status: 'success' | 'failed';
   errorCode?: string;
+  linkedTicket?: { id: string; ticketNumber?: string } | null;
   createdAt: string;
 }
 
@@ -77,6 +78,8 @@ export interface WorkloadForecastResult {
   forecast: WorkloadForecastRow[];
   recent_history: Array<{ date: string; ticket_count: number }>;
   notes: string[];
+  prediction_id?: string;
+  source?: 'workspace_ticket_history' | 'uploaded_csv';
 }
 
 export interface WorkloadForecastHealth {
@@ -92,7 +95,7 @@ export interface TriageResult {
   prediction: Prediction;
   risk: { risk_probability: number; risk_category: 'low' | 'medium' | 'high'; flagged_for_review: boolean; decision_threshold: number; target_threshold_hours: number; model_version: string; notes?: string[]; explanation?: { summary: string; historical_evidence: Array<{ factor: string; value: string; historical_tickets: number; historical_delay_rate: number }>; evidence_cutoff: string; interpretation: string } };
   resolution: { duration: number; unit: 'hours'; prediction_type: 'point_estimate'; model_version?: string; artifact_generated_at?: string };
-  workload: { model_id: string; history_start: string; history_end: string; history_days: number; ticket_total: number; horizon: 7 | 14; forecast: Array<{ date: string; weekday: string; forecast: number; planning_low: number; planning_high: number; high_load_threshold: number; high_load_flag: boolean }> };
+  workload: { model_id: string; history_start: string; history_end: string; history_days: number; ticket_total: number; horizon: 7 | 14; source?: 'workspace_ticket_history' | 'uploaded_csv' | 'triage'; forecast: Array<{ date: string; weekday: string; forecast: number; planning_low: number; planning_high: number; high_load_threshold: number; high_load_flag: boolean }> };
   recommendation: { recommendedPriority: string; assignee: { id: string; name: string; activeTickets: number } | null };
   sla: TicketSla | null;
 }
@@ -152,6 +155,8 @@ export interface CustomerTicketPage {
 export interface DashboardSummary {
   totalPredictions: number;
   resolutionPredictions: number;
+  delayRiskPredictions: number;
+  workloadForecasts: number;
   averageResolutionHours: number | null;
   availableModels: number;
   models: ModelInfo[];

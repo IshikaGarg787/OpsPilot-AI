@@ -5,6 +5,16 @@ export interface DailyWorkloadRecord {
   ticket_count: number;
 }
 
+export function dailyRecordsCsv(records: DailyWorkloadRecord[]): string {
+  return ['date,ticket_count', ...records.map(({ date, ticket_count }) => `${date},${ticket_count}`)].join('\n');
+}
+
+export function blankWorkloadTemplate(startDate: string, days = 180): string {
+  const start = Date.parse(`${startDate}T00:00:00Z`);
+  if (!Number.isFinite(start)) throw new Error('A valid template start date is required.');
+  return ['date,ticket_count', ...Array.from({ length: days }, (_, index) => `${new Date(start + index * 86400000).toISOString().slice(0, 10)},`)].join('\n');
+}
+
 export function parseCsv(text: string): Record<string, string>[] {
   const rows: string[][] = [];
   let row: string[] = [];
@@ -32,9 +42,12 @@ export function aggregateWorkloadHistory(rows: Record<string, string>[]): DailyW
 
   for (const row of rows) {
     if (row.date !== undefined && row.ticket_count !== undefined) {
-      const day = row.date.trim().slice(0, 10);
+      const day = row.date.trim();
+      const dateMs = Date.parse(`${day}T00:00:00Z`);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isFinite(dateMs) || new Date(dateMs).toISOString().slice(0, 10) !== day) throw new Error('Daily CSV rows need valid calendar dates in YYYY-MM-DD format.');
+      if (!row.ticket_count.trim()) throw new Error(`Enter ticket_count for ${day}; leave zero as 0 when no tickets arrived.`);
       const count = Number(row.ticket_count);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isInteger(count) || count < 0) throw new Error('Daily CSV rows need valid date and whole, non-negative ticket_count values.');
+      if (!Number.isInteger(count) || count < 0) throw new Error('Daily CSV rows need whole, non-negative ticket_count values.');
       add(day, count);
     } else if (row.issue_created) {
       if (hasIssueType && !SUPPORT_ISSUE_TYPES.has((row.issue_type ?? '').trim())) continue;
@@ -44,8 +57,12 @@ export function aggregateWorkloadHistory(rows: Record<string, string>[]): DailyW
     } else throw new Error('CSV needs issue_created, or date and ticket_count columns.');
   }
 
-  const records = [...counts].sort(([a], [b]) => a.localeCompare(b)).map(([date, ticket_count]) => ({ date, ticket_count }));
-  if (records.length < 120) throw new Error('The history must cover at least 120 days.');
-  if ((Date.parse(records.at(-1)!.date) - Date.parse(records[0].date)) / 86400000 < 119) throw new Error('The history must span at least 120 calendar days.');
-  return records;
+  const sorted = [...counts].sort(([a], [b]) => a.localeCompare(b));
+  if (!sorted.length) throw new Error('No support ticket dates were found in this CSV.');
+  const first = Date.parse(`${sorted[0][0]}T00:00:00Z`);
+  const last = Date.parse(`${sorted.at(-1)![0]}T00:00:00Z`);
+  const days = Math.floor((last - first) / 86400000) + 1;
+  if (days < 120) throw new Error('The history must span at least 120 calendar days.');
+  const dailyCounts = new Map(sorted);
+  return Array.from({ length: days }, (_, index) => { const date = new Date(first + index * 86400000).toISOString().slice(0, 10); return { date, ticket_count: dailyCounts.get(date) ?? 0 }; });
 }
