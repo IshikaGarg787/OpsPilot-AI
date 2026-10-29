@@ -4,7 +4,7 @@ import { SessionModel } from '../models/Session.js';
 import { HttpError } from './errorHandler.js';
 import { env } from '../config/env.js';
 import { databaseStatus } from '../config/database.js';
-import type { UserDocument } from '../models/User.js';
+import type { AppRole, UserDocument } from '../models/User.js';
 import { normalizedRole } from '../models/User.js';
 import { ADMIN_OWNER_USERNAME } from '../security/adminPolicy.js';
 
@@ -46,7 +46,10 @@ export const requireAuth: RequestHandler = async (req, _res, next) => {
     if (!token) throw new HttpError(401, 'Authentication is required.', 'AUTH_REQUIRED');
     const session = await SessionModel.findOne({ tokenHash: hashToken(token), expiresAt: { $gt: new Date() } }).populate('userId');
     if (!session?.userId || typeof session.userId === 'string' || !(session.userId as { _id?: unknown })._id) throw new HttpError(401, 'Your session has expired.', 'SESSION_EXPIRED');
-    req.user = session.userId as unknown as UserDocument;
+    const user = session.userId as unknown as UserDocument;
+    try { normalizedRole(user); }
+    catch { throw new HttpError(403, 'This account has an unsupported role.', 'UNSUPPORTED_ROLE'); }
+    req.user = user;
     req.sessionId = session._id.toString();
     void SessionModel.updateOne({ _id: session._id }, { $set: { lastUsedAt: new Date() } });
     next();
@@ -58,16 +61,22 @@ export const requireAuth: RequestHandler = async (req, _res, next) => {
 /**
  * Restricts an already-authenticated request to the listed roles.
  * Mount after requireAuth (for example, router.use(requireAuth, requireRole('admin'))).
- * Roles remain string-based here so proposed roles can be added only when the
- * User schema and provisioning policy are approved together.
+ * Only canonical application roles can be allowed. Proposed roles remain
+ * unavailable until the User schema and provisioning policy are approved.
  */
-export function requireRole(...allowedRoles: string[]): RequestHandler {
+export function requireRole(...allowedRoles: AppRole[]): RequestHandler {
   return (req, _res, next) => {
     if (!req.user) {
       next(new HttpError(401, 'Authentication is required.', 'AUTH_REQUIRED'));
       return;
     }
-    if (!allowedRoles.includes(String(req.user.role)) && !allowedRoles.includes(normalizedRole(req.user))) {
+    let role: AppRole;
+    try { role = normalizedRole(req.user); }
+    catch {
+      next(new HttpError(403, 'This account has an unsupported role.', 'UNSUPPORTED_ROLE'));
+      return;
+    }
+    if (!allowedRoles.includes(role)) {
       next(new HttpError(403, 'You do not have permission to perform this action.', 'FORBIDDEN'));
       return;
     }
@@ -90,10 +99,17 @@ export const requireAdminOwner: RequestHandler = (req, _res, next) => {
 
 /** Allows ordinary authenticated users, but prevents any non-owner Admin record from using mixed-role APIs. */
 export const requireOwnerAdminWhenPresent: RequestHandler = (req, _res, next) => {
-  if (!req.user || normalizedRole(req.user) !== 'admin') {
+  if (!req.user) {
     next();
     return;
   }
+  let role: AppRole;
+  try { role = normalizedRole(req.user); }
+  catch {
+    next(new HttpError(403, 'This account has an unsupported role.', 'UNSUPPORTED_ROLE'));
+    return;
+  }
+  if (role !== 'admin') { next(); return; }
   requireAdminOwner(req, _res, next);
 };
 

@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { Request, Response } from 'express';
-import type { UserDocument } from '../src/models/User.js';
+import { normalizedRole, type AppRole, type UserDocument } from '../src/models/User.js';
 import { HttpError } from '../src/middleware/errorHandler.js';
 import { requireAdminOwner, requireAuth, requireOwnerAdminWhenPresent, requireRole } from '../src/middleware/auth.js';
 import { adminAuthorization } from '../src/routes/adminRoutes.js';
 
-function invokeRoleGuard(role: string | undefined, allowedRoles: string[], username?: string) {
+function invokeRoleGuard(role: string | undefined, allowedRoles: AppRole[], username?: string) {
   const request = {
     ...(role === undefined ? {} : { user: { role } as UserDocument }),
     ...(username === undefined ? {} : { username }),
@@ -55,18 +55,21 @@ test('role guard rejects authenticated users with insufficient role', () => {
   assert.equal((result.nextError as HttpError).code, 'FORBIDDEN');
 });
 
-test('role guard permits every explicitly allowed role', () => {
-  for (const role of ['user', 'it', 'admin']) {
-    const result = invokeRoleGuard(role, ['user', 'it', 'admin']);
-    assert.equal(result.nextCalled, true);
-    assert.equal(result.nextError, undefined);
-  }
-});
-
-test('legacy user role is accepted as Customer without changing its stored role', () => {
+test('persisted user maps only to the canonical Customer role', () => {
+  assert.equal(normalizedRole({ role: 'user' }), 'customer');
+  assert.equal(normalizedRole({ role: 'admin' }), 'admin');
   const result = invokeRoleGuard('user', ['customer']);
   assert.equal(result.nextCalled, true);
   assert.equal(result.nextError, undefined);
+});
+
+test('unknown and unapproved persisted roles fail closed', () => {
+  assert.throws(() => normalizedRole({ role: 'it' }), /unsupported role/);
+  assert.throws(() => normalizedRole({ role: 'it_team' }), /unsupported role/);
+  assert.throws(() => normalizedRole({ role: 'unexpected' }), /unsupported role/);
+  const result = invokeRoleGuard('unexpected', ['customer']);
+  assert.ok(result.nextError instanceof HttpError);
+  assert.equal((result.nextError as HttpError).status, 403);
 });
 
 test('mixed ticket authorization allows ordinary users but rejects non-owner Admin records', () => {

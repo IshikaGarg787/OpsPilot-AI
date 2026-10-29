@@ -24,17 +24,20 @@ export const UserModel = mongoose.models.User || mongoose.model<User>('User', us
 
 export type AppRole = 'customer' | 'it_team' | 'admin';
 
-/** Compatibility view: legacy persisted `user` accounts act as customers without changing stored data. */
-export function normalizedRole(user: Pick<User, 'role'>): AppRole {
-  return user.role === 'admin' ? 'admin' : 'customer';
+/** Compatibility view for supported persisted roles. Unknown values fail closed. */
+export function normalizedRole(user: { role?: unknown }): AppRole {
+  if (user.role === 'user') return 'customer';
+  if (user.role === 'admin') return 'admin';
+  throw new Error('The account has an unsupported role.');
 }
 
 export function publicUser(user: UserDocument) {
+  const role = normalizedRole(user);
   return {
     id: user._id.toString(),
     name: user.name,
     email: user.email,
-    role: normalizedRole(user),
+    role,
     themePreference: user.themePreference,
   };
 }

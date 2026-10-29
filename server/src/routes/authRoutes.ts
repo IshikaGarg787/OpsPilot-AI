@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import { UserModel, publicUser } from '../models/User.js';
+import { normalizedRole, UserModel, publicUser } from '../models/User.js';
 import { SessionModel } from '../models/Session.js';
 import { createSession, clearSessionCookie, destroySession, requireAuth, setSessionCookie } from '../middleware/auth.js';
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js';
@@ -31,6 +31,8 @@ router.post('/login', authLimiter, asyncHandler(async (req, res) => {
   const input = loginSchema.parse(req.body);
   const user = await findUserForLogin(input.email);
   if (!user || !(await verifyPassword(user, input.password))) throw new HttpError(401, 'Email or password is incorrect.', 'INVALID_CREDENTIALS');
+  try { normalizedRole(user); }
+  catch { throw new HttpError(403, 'This account has an unsupported role.', 'UNSUPPORTED_ROLE'); }
   const session = await createSession(user._id.toString(), input.remember);
   setSessionCookie(res, session.token, input.remember);
   res.json({ success: true, data: { user: publicUser(user) }, message: 'Welcome back.' });
