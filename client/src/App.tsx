@@ -30,6 +30,12 @@ function ProtectedRoute() {
   return user ? <Outlet /> : <Navigate to="/login" replace state={{ from: location.pathname }} />;
 }
 
+function GuestRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="full-page-state"><LoadingState label="Restoring your session" /></div>;
+  return user ? <Navigate to="/app" replace /> : <Outlet />;
+}
+
 function AdminRoute() {
   const { user, loading } = useAuth();
   if (loading) return <div className="full-page-state"><LoadingState label="Checking workspace access" /></div>;
@@ -46,5 +52,5 @@ function AdminOwnerRoute() {
 function NotFound() { return <div className="full-page-state"><h1>Page not found</h1><p>The workspace route you requested does not exist.</p><Navigate to="/" replace /></div>; }
 
 export default function App() {
-  return <BrowserRouter><Suspense fallback={<div className="full-page-state"><LoadingState label="Loading workspace" /></div>}><Routes><Route path="/" element={<LandingPage />} /><Route path="/login" element={<LoginPage />} /><Route path="/signup" element={<SignupPage />} /><Route element={<ProtectedRoute />}><Route path="/app" element={<AppShell />}><Route index element={<DashboardPage />} /><Route path="tickets" element={<TicketListPage />} /><Route path="tickets/new" element={<TicketCreatePage />} /><Route path="tickets/:ticketId" element={<TicketDetailPage />} /><Route path="resolution-time" element={<ResolutionPage />} /><Route path="models" element={<ModelCenterPage />} /><Route path="history" element={<HistoryPage />} /><Route path="analytics" element={<AnalyticsPage />} /><Route path="settings" element={<SettingsPage />} /><Route path="operational-risk" element={<ComingSoonPage />} /><Route element={<AdminRoute />}><Route path="users" element={<UserManagementPage />} /><Route path="predictions" element={<PredictionsPage />} /><Route path="triage" element={<TriagePage />} /><Route path="workload-forecasting" element={<WorkloadForecastPage />} /><Route path="capacity-plans" element={<CapacityPlanPage />} /></Route></Route></Route><Route path="*" element={<NotFound />} /></Routes></Suspense></BrowserRouter>;
+  return <BrowserRouter><Suspense fallback={<div className="full-page-state"><LoadingState label="Loading workspace" /></div>}><Routes><Route path="/" element={<LandingPage />} /><Route element={<GuestRoute />}><Route path="/login" element={<LoginPage />} /><Route path="/signup" element={<SignupPage />} /></Route><Route element={<ProtectedRoute />}><Route path="/app" element={<AppShell />}><Route index element={<DashboardPage />} /><Route path="tickets" element={<TicketListPage />} /><Route path="tickets/new" element={<TicketCreatePage />} /><Route path="tickets/:ticketId" element={<TicketDetailPage />} /><Route path="resolution-time" element={<ResolutionPage />} /><Route path="models" element={<ModelCenterPage />} /><Route path="history" element={<HistoryPage />} /><Route path="analytics" element={<AnalyticsPage />} /><Route path="settings" element={<SettingsPage />} /><Route path="operational-risk" element={<ComingSoonPage />} /><Route element={<AdminRoute />}><Route path="users" element={<UserManagementPage />} /><Route path="predictions" element={<PredictionsPage />} /><Route path="triage" element={<TriagePage />} /><Route path="workload-forecasting" element={<WorkloadForecastPage />} /><Route path="capacity-plans" element={<CapacityPlanPage />} /></Route></Route></Route><Route path="*" element={<NotFound />} /></Routes></Suspense></BrowserRouter>;
 }

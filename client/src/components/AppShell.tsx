@@ -20,8 +20,18 @@ const adminNavItems = [
 ];
 const teamNavItems = [
   { to: '/app', label: 'Overview', icon: LayoutDashboard, end: true },
-  { to: '/app/tickets', label: 'My tickets & assignments', icon: Ticket },
+  { to: '/app/tickets', label: 'Assigned tickets', icon: Ticket },
+  { to: '/app/resolution-time', label: 'Resolution insights', icon: Clock3 },
+  { to: '/app/models', label: 'Model Center', icon: Gauge },
+  { to: '/app/history', label: 'Prediction History', icon: History },
+  { to: '/app/settings', label: 'Settings', icon: Settings },
+];
+const customerNavItems = [
+  { to: '/app', label: 'Overview', icon: LayoutDashboard, end: true },
+  { to: '/app/tickets', label: 'My tickets', icon: Ticket },
   { to: '/app/tickets/new', label: 'Raise an issue', icon: Plus },
+  { to: '/app/resolution-time', label: 'Resolution estimate', icon: Clock3 },
+  { to: '/app/models', label: 'Model Center', icon: Gauge },
   { to: '/app/history', label: 'My AI estimates', icon: History },
   { to: '/app/settings', label: 'Settings', icon: Settings },
 ];
@@ -35,7 +45,7 @@ export function AppShell() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const pageName = pageNames[location.pathname] ?? 'Workspace';
-  const navItems = user?.role === 'admin' ? adminNavItems : teamNavItems;
+  const navItems = user?.role === 'admin' ? adminNavItems : user?.role === 'it_team' ? teamNavItems : customerNavItems;
   const initials = user?.name.split(' ').map((name) => name[0]).slice(0, 2).join('').toUpperCase() ?? 'OP';
 
   async function handleLogout() { await logout(); navigate('/login'); }
