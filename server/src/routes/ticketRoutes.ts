@@ -64,6 +64,8 @@ async function serialize(ticket: any, role: string, includeDetails = true) {
     assignedTo: ticket.assignedTo && typeof ticket.assignedTo !== 'string' ? { id: ticket.assignedTo._id.toString(), name: ticket.assignedTo.name, email: ticket.assignedTo.email } : ticket.assignedTo,
     aiSignals: ticket.aiSignals, workloadOutlook: ticket.workloadOutlook, recommendation: ticket.recommendation,
     sla: calculateTicketSlaForRecord(ticket),
+    estimatedResolutionAt: typeof ticket.aiSignals?.resolutionHours === 'number' ? new Date(new Date(ticket.createdAt).getTime() + ticket.aiSignals.resolutionHours * 60 * 60 * 1000) : null,
+    delayExplanation: role === 'admin' ? ticket.delayExplanation : undefined,
     responses: ticket.responses.filter((reply: any) => role !== 'customer' || reply.visibility === 'public'),
     audit: role === 'admin' ? ticket.audit : undefined,
     attachments: attachments.map((item: any) => ({ id: String(item._id), fileName: item.fileName, mimeType: item.mimeType, size: item.size, createdAt: item.createdAt })),
@@ -72,8 +74,10 @@ async function serialize(ticket: any, role: string, includeDetails = true) {
 }
 
 router.get('/assignees', requireRole('admin'), asyncHandler(async (_req, res) => {
-  const users = await UserModel.find({ role: 'it_team' }).sort({ name: 1 }).select('name email role').lean();
-  res.json({ success: true, data: { users: users.map((user: any) => ({ id: String(user._id), name: user.name, email: user.email })) } });
+  const users = await UserModel.find({ role: 'it_team' }).sort({ name: 1 }).select('name email skills availability').lean();
+  const counts = await TicketModel.aggregate([{ $match: { assignedTo: { $in: users.map((user: any) => user._id) }, status: { $in: ['assigned', 'in_progress'] } } }, { $group: { _id: '$assignedTo', count: { $sum: 1 } } }]);
+  const active = new Map(counts.map((row: any) => [String(row._id), row.count]));
+  res.json({ success: true, data: { users: users.map((user: any) => ({ id: String(user._id), name: user.name, email: user.email, skills: user.skills ?? [], activeTickets: active.get(String(user._id)) ?? 0, availability: (user.availability === 'unavailable' ? 'unavailable' : (active.get(String(user._id)) ?? 0) > 0 ? 'busy' : 'available') })) } });
 }));
 
 router.post('/', requireRole('customer', 'it_team'), asyncHandler(async (req, res) => {
@@ -196,6 +200,10 @@ router.patch('/:ticketId/status', asyncHandler(async (req, res) => {
   const assigned = assignedUserId(ticket) === req.user!._id.toString();
   if (role !== 'admin' && !(role === 'it_team' && assigned)) throw new HttpError(403, 'Only an admin or the assigned IT teammate can update ticket status.', 'TICKET_NOT_ASSIGNED');
   const previous = ticket.status;
+  const estimateAt = typeof ticket.aiSignals?.resolutionHours === 'number' ? ticket.createdAt.getTime() + ticket.aiSignals.resolutionHours * 60 * 60 * 1000 : null;
+  const isLate = ['resolved', 'closed'].includes(input.status) && estimateAt !== null && Date.now() > estimateAt;
+  if (isLate && !input.delayExplanation?.trim()) throw new HttpError(400, 'This ticket is past its estimated resolution time. Add an explanation before resolving it.', 'DELAY_EXPLANATION_REQUIRED');
+  if (input.delayExplanation) ticket.delayExplanation = input.delayExplanation.trim();
   ticket.status = input.status;
   const now = new Date();
   if (input.status === 'resolved' || input.status === 'closed') ticket.resolutionCompletedAt = now;
@@ -212,6 +220,9 @@ router.patch('/:ticketId/assignment', requireRole('admin'), asyncHandler(async (
   const assignee = await UserModel.findOne({ _id: input.assigneeId, role: 'it_team' });
   if (!assignee) throw new HttpError(400, 'Choose an active IT Team account.', 'INVALID_ASSIGNEE');
   const previous = assignedUserId(ticket) ?? 'unassigned';
+  if (assignee.availability === 'unavailable' && previous !== assignee._id.toString()) throw new HttpError(409, 'This teammate is unavailable. Choose someone available.', 'ASSIGNEE_UNAVAILABLE');
+  const occupied = await TicketModel.exists({ assignedTo: assignee._id, status: { $in: ['assigned', 'in_progress'] }, _id: { $ne: ticket._id } });
+  if (occupied && previous !== assignee._id.toString()) throw new HttpError(409, 'This teammate is already occupied with another ticket.', 'ASSIGNEE_OCCUPIED');
   ticket.assignedTo = assignee._id;
   if (ticket.status === 'open' || ticket.status === 'triaged') ticket.status = 'assigned';
   addAudit(ticket, req, 'ticket_assigned', `${previous} → ${assignee.name}`);

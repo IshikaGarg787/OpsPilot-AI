@@ -29,6 +29,7 @@ const ticketSchema = new mongoose.Schema({
   status: { type: String, enum: ['open', 'triaged', 'assigned', 'in_progress', 'waiting_customer', 'resolved', 'closed'], default: 'open', index: true },
   resolutionCompletedAt: { type: Date },
   resolutionReopenedAt: { type: Date },
+  delayExplanation: { type: String, maxlength: 2000 },
   assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
   aiSignals: {
     delayRiskProbability: { type: Number, min: 0, max: 1 },
