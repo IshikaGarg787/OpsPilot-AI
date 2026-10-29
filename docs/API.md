@@ -90,11 +90,11 @@ The duration in this example documents the response shape and is not a value ren
 
 ## History
 
-`GET /predictions?page=1&pageSize=20&modelId=resolution-time` returns user-scoped records, newest first, with pagination. `GET /predictions/:id` and `DELETE /predictions/:id` perform ownership checks. Dashboard aggregates use the same user scope.
+`GET /predictions?page=1&pageSize=20&modelId=resolution-time` returns records newest first with pagination. Customers and IT members see their own runs; the workspace Admin sees all workspace runs. Existing ticket intake scores are backfilled idempotently from saved ticket signals. `GET /predictions/:id` checks the same scope; deleting a prediction remains limited to its owner. Dashboard aggregates use the same role-aware scope.
 
 ## Role-based tickets
 
-All ticket routes require a signed-in session. `POST /tickets` accepts `subject`, `description`, `category`, `priority`, and `project`; it scores creation-time fields with delay-risk and resolution services when healthy, then saves available signals with the ticket. Complaint text is retained for support staff and is not passed to the trained models. Customers can read only their own tickets; IT Team members can read their own and assigned tickets; Admins can read the workspace queue.
+All ticket routes require a signed-in session. `POST /tickets` accepts `subject`, `description`, `category`, `priority`, and `project`; it scores creation-time fields with delay-risk and resolution services when healthy, saves available signals with the ticket, and records each model run in prediction history. Complaint text is retained for support staff and is not passed to the trained models. Customers can read only their own tickets; IT Team members can read their own and assigned tickets; Admins can read the workspace queue.
 
 The ticket API also provides scoped `GET /tickets`, `GET /tickets/:ticketId`, public/internal responses, status updates, admin assignment and priority changes, recommendation decisions, and ticket attachments. Admin-only user/role management is available under `/users`. Server middleware checks role and ownership/assignment before returning records or applying changes. Public signup cannot assign Admin; the single Admin owner is provisioned using the protected CLI documented in `database-architecture.md`.
 
@@ -118,7 +118,9 @@ The standalone workload page uses these authenticated Express routes. Express va
 
 ### Generate a forecast
 
-`POST /predictions/workload` accepts either ticket-level records or daily aggregates. At least 120 calendar days between the first and last valid date are required. Counts must be finite whole numbers at or above zero. Timestamps are normalized to UTC dates, and gaps are filled with zero.
+`GET /predictions/workload/history` is Admin-only. It returns daily customer-ticket counts from OpsPilot, fills dates without tickets with zero, and reports whether at least 120 complete days are available. This avoids requiring a CSV once the workspace has enough history.
+
+`POST /predictions/workload` accepts either ticket-level records or daily aggregates. At least 120 calendar days between the first and last valid date are required. Counts must be finite whole numbers at or above zero. Timestamps are normalized to UTC dates, and gaps are filled with zero. Successful forecasts are saved as `workload-forecasting` entries in prediction history. The optional `source` field is `workspace_ticket_history` or `uploaded_csv`.
 
 Example request (records abbreviated; a real request must cover at least 120 calendar days):
 
@@ -134,6 +136,6 @@ Example request (records abbreviated; a real request must cover at least 120 cal
 
 The API also accepts ticket-level rows such as `{"issue_created":"2024-01-01T09:30:00Z","issue_type":"Ticket"}`. Only `horizon: 7` and `horizon: 14` are supported. If `issue_type` is supplied, only `Ticket`, `Service`, and `HD Service` records are retained. The Triage and standalone pages both apply that filter in the browser before reducing ticket rows to daily counts.
 
-The response includes `history_start`, `history_end`, `history_days`, `ticket_total`, `forecast`, `recent_history`, and notes. Each forecast row includes `date`, `weekday`, `forecast`, `planning_low`, `planning_high`, `high_load_threshold`, and `high_load_flag`. `planning_low` and `planning_high` are variability-based planning estimates, not calibrated confidence limits. Forecasts are refit from the submitted data and are not persisted by the current workflow.
+The workload page can download daily OpsPilot customer-ticket totals or a dated blank template (`date,ticket_count`) for importing real history from an existing help desk. The template needs actual counts entered before upload; blank counts are rejected. The response includes `history_start`, `history_end`, `history_days`, `ticket_total`, `forecast`, `recent_history`, and notes. Each forecast row includes `date`, `weekday`, `forecast`, `planning_low`, `planning_high`, `high_load_threshold`, and `high_load_flag`. `planning_low` and `planning_high` are variability-based planning estimates, not calibrated confidence limits. Forecasts are refit from the submitted data and saved to the caller's prediction history.
 
 Invalid schemas, timestamps, counts, or insufficient history return HTTP 422. Missing configuration or an inference failure returns HTTP 503. The FastAPI service remains reachable only through Express for the product UI; its CORS allowlist no longer needs to include a deployed browser origin.

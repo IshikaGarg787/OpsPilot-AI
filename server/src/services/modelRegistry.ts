@@ -29,7 +29,7 @@ const baseModels = [
     id: 'workload-forecasting',
     displayName: 'Workload / Operations Forecasting',
     shortName: 'Workload forecasting',
-    description: 'Refit a tuned XGBoost ensemble on refreshed ticket CSV data to forecast daily workload.',
+    description: 'Refit a tuned XGBoost ensemble on actual daily ticket counts from the workspace or an imported company history.',
     status: 'unavailable' as ModelStatus,
     inputSchema: 'issue_created, issue_type OR date, ticket_count',
     outputSchema: 'daily forecast, planning range, high-load flags',

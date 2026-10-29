@@ -31,6 +31,7 @@ export const triagePipelineSchema = z.object({
   issue_type: z.string().trim().min(1).max(100),
   issue_proj: z.string().trim().min(1).max(200),
   horizon: z.union([z.literal(7), z.literal(14)]),
+  workload_source: z.enum(['workspace_ticket_history', 'uploaded_csv']).optional().default('uploaded_csv'),
   // The client reduces ticket uploads to small daily aggregates before sending them.
   workload_records: z.array(z.object({
     date: dateString,
@@ -41,6 +42,7 @@ export const triagePipelineSchema = z.object({
 export const workloadForecastSchema = z.object({
   records: z.array(z.record(z.string(), z.unknown())).min(1).max(250000),
   horizon: z.union([z.literal(7), z.literal(14)]),
+  source: z.enum(['workspace_ticket_history', 'uploaded_csv']).optional().default('uploaded_csv'),
 });
 
 export const profileSchema = z.object({ name: z.string().trim().min(2).max(100) });

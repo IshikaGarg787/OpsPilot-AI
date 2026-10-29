@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js';
 import { TicketModel } from '../models/Ticket.js';
 import { TicketAttachmentModel } from '../models/TicketAttachment.js';
+import { PredictionModel } from '../models/Prediction.js';
 import { normalizedRole, UserModel } from '../models/User.js';
 import { predictDelayRisk, predictResolution } from '../services/mlService.js';
 import { recommendationDecisionSchema, ticketAssignmentSchema, ticketCreateSchema, ticketResponseSchema, ticketStatusSchema } from '../validators/schemas.js';
@@ -91,7 +92,12 @@ router.post('/', requireRole('customer', 'it_team'), asyncHandler(async (req, re
     signals.reviewThreshold = risk.decision_threshold;
     signals.targetThresholdHours = risk.target_threshold_hours;
     signals.riskModelVersion = risk.model_version;
-    if (risk.explanation) signals.riskExplanation = risk.explanation;
+    if (risk.explanation) signals.riskExplanation = {
+      summary: risk.explanation.summary,
+      historicalEvidence: risk.explanation.historical_evidence.map((item) => ({ factor: item.factor, value: item.value, historicalTickets: item.historical_tickets, historicalDelayRate: item.historical_delay_rate })),
+      evidenceCutoff: risk.explanation.evidence_cutoff,
+      interpretation: risk.explanation.interpretation,
+    };
   } catch {
     unavailable.push('delay risk');
   }
@@ -118,6 +124,12 @@ router.post('/', requireRole('customer', 'it_team'), asyncHandler(async (req, re
   });
   addAudit(ticket, req, 'ticket_created', `${role} submitted a ticket`);
   await ticket.save();
+  const predictionInput = { issueCreated: createdAt, priority: input.priority, issueType: input.category, project: input.project, complaint: input.description, ticketId: ticket._id };
+  const historyRuns = [
+    PredictionModel.create({ userId: req.user!._id, modelId: 'operational-risk', modelVersion: signals.riskModelVersion, predictionType: 'delay_risk_classification', input: predictionInput, output: typeof signals.delayRiskProbability === 'number' ? { delayRisk: { probability: signals.delayRiskProbability, category: signals.delayRiskCategory, flaggedForReview: signals.flaggedForReview, decisionThreshold: signals.reviewThreshold, targetThresholdHours: signals.targetThresholdHours, modelVersion: signals.riskModelVersion, ...(signals.riskExplanation ? { explanation: signals.riskExplanation } : {}) } } : undefined, status: typeof signals.delayRiskProbability === 'number' ? 'success' : 'failed', ...(typeof signals.delayRiskProbability === 'number' ? {} : { errorCode: 'MODEL_UNAVAILABLE' }) }),
+    PredictionModel.create({ userId: req.user!._id, modelId: 'resolution-time', modelVersion: signals.resolutionModelVersion, predictionType: 'point_estimate', input: predictionInput, output: typeof signals.resolutionHours === 'number' ? { duration: signals.resolutionHours, unit: 'hours' } : undefined, status: typeof signals.resolutionHours === 'number' ? 'success' : 'failed', ...(typeof signals.resolutionHours === 'number' ? {} : { errorCode: 'MODEL_UNAVAILABLE' }) }),
+  ];
+  await Promise.allSettled(historyRuns);
   res.status(201).json({ success: true, data: { ticket: await serialize(ticket, role) }, message: unavailable.length ? 'Ticket submitted; one or more model signals are currently unavailable.' : 'Ticket submitted and scored by the available models.' });
 }));
 

@@ -8,7 +8,7 @@ OpsPilot connects a React workspace, an Express API, MongoDB, and two isolated F
 
 - Customer, IT Team, and Admin roles with server-enforced ticket ownership, assignment scopes, replies, status/priority controls, attachments, recommendation decisions, and audit entries.
 - Ticket creation-time scoring using the saved delay-risk classifier and resolution-time regressor; admins can run a single ordered risk → resolution → workload pipeline for an existing ticket.
-- Live 7- or 14-day workload forecasts from refreshed ticket-level or daily aggregate CSV data; the resulting outlook is saved back to the linked ticket.
+- Live 7- or 14-day workload forecasts from actual OpsPilot customer ticket history or imported ticket-level/daily aggregate CSV data. Standalone forecasts are saved in prediction history; integrated decision runs also save the outlook to their linked ticket.
 - Admin user/role management, dashboards, analytics, prediction history, and capacity scenarios comparing entered baseline/proposed tickets-per-day against saved forecasts.
 
 ## Architecture
