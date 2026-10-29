@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { api } from '../services/api';
+import { api, SESSION_EXPIRED_EVENT } from '../services/api';
 import type { User } from '../types';
 import { useTheme } from './ThemeContext';
 
@@ -12,7 +12,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { setTheme } = useTheme();
 
   useEffect(() => {
+    const clearExpiredSession = () => setUser(null);
+    window.addEventListener(SESSION_EXPIRED_EVENT, clearExpiredSession);
     api.auth.me().then(({ user: current }) => { setUser(current); setTheme(current.themePreference); }).catch(() => undefined).finally(() => setLoading(false));
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, clearExpiredSession);
   }, [setTheme]);
 
   const value = useMemo<AuthContextValue>(() => ({

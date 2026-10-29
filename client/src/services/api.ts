@@ -1,11 +1,16 @@
 import type { DashboardActivity, DashboardSummary, ModelInfo, ModelMetadata, PaginatedPredictions, Prediction, ThemePreference, Ticket, TriageResult, User } from '../types';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000/api/v1').replace(/\/$/, '');
+export const SESSION_EXPIRED_EVENT = 'opspilot:session-expired';
 
 export class ApiError extends Error {
   constructor(message: string, public status: number, public code?: string, public details?: unknown) {
     super(message);
   }
+}
+
+function notifyUnauthorized(response: Response) {
+  if (response.status === 401) window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -14,6 +19,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     credentials: 'include',
     headers: { 'content-type': 'application/json', ...(init.headers ?? {}) },
   });
+  notifyUnauthorized(response);
   const body = await response.json().catch(() => ({}));
   if (!response.ok || body.success === false) throw new ApiError(body.message ?? 'Request failed.', response.status, body.code, body.details);
   return body.data as T;
@@ -61,12 +67,14 @@ export const api = {
     users: () => request<{ users: Array<{ id: string; name: string; email: string; role: string; createdAt: string }> }>('/users'),
     uploadAttachment: async (ticketId: string, file: File) => {
       const response = await fetch(`${API_BASE_URL}/tickets/${ticketId}/attachments`, { method: 'POST', credentials: 'include', headers: { 'content-type': file.type, 'x-file-name': encodeURIComponent(file.name) }, body: file });
+      notifyUnauthorized(response);
       const body = await response.json().catch(() => ({}));
       if (!response.ok || body.success === false) throw new ApiError(body.message ?? 'Attachment upload failed.', response.status, body.code);
       return body.data as { attachment: { id: string; fileName: string } };
     },
     downloadAttachment: async (ticketId: string, attachmentId: string) => {
       const response = await fetch(`${API_BASE_URL}/tickets/${ticketId}/attachments/${attachmentId}`, { credentials: 'include' });
+      notifyUnauthorized(response);
       if (!response.ok) throw new ApiError('Attachment could not be downloaded.', response.status);
       return response.blob();
     },
