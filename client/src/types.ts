@@ -1,18 +1,11 @@
 export type ThemePreference = 'light' | 'dark' | 'system';
-<<<<<<< HEAD
 export type AppRole = 'customer' | 'it_team' | 'admin';
-=======
->>>>>>> origin/main
 
 export interface User {
   id: string;
   name: string;
   email: string;
-<<<<<<< HEAD
   role: AppRole;
-=======
-  role: string;
->>>>>>> origin/main
   themePreference: ThemePreference;
 }
 
@@ -31,10 +24,7 @@ export interface ModelInfo {
 }
 
 export interface Evaluation {
-<<<<<<< HEAD
-=======
   model?: string;
->>>>>>> origin/main
   target?: { definition?: string; unit?: string; prediction_type?: string; included_rows?: number };
   splits?: Array<{ split: string; rows: number; first_created: string; last_created: string }>;
   validation?: { model?: string; validation_mae_hours?: number; validation_rmse_hours?: number; validation_r2?: number };
@@ -51,7 +41,6 @@ export interface Prediction {
   modelId: string;
   modelVersion?: string;
   predictionType: string;
-<<<<<<< HEAD
   input: { issueCreated: string; priority: string; issueType: string; project: string; complaint?: string };
   output?: {
     duration?: number;
@@ -59,16 +48,11 @@ export interface Prediction {
     delayRisk?: { probability: number; category: 'low' | 'medium' | 'high'; flaggedForReview: boolean; decisionThreshold: number; targetThresholdHours: number; modelVersion?: string };
     workload?: { historyStart: string; historyEnd: string; historyDays: number; horizon: 7 | 14; ticketTotal: number; expectedTickets: number; highLoadDays: number; forecast: Array<{ date: string; forecast: number; planningLow: number; planningHigh: number; highLoad: boolean }> };
   };
-=======
-  input: { issueCreated: string; priority: string; issueType: string; project: string };
-  output?: { duration?: number; unit?: string };
->>>>>>> origin/main
   status: 'success' | 'failed';
   errorCode?: string;
   createdAt: string;
 }
 
-<<<<<<< HEAD
 export interface TriageResult {
   prediction: Prediction;
   risk: { risk_probability: number; risk_category: 'low' | 'medium' | 'high'; flagged_for_review: boolean; decision_threshold: number; target_threshold_hours: number; model_version: string; notes?: string[] };
@@ -90,8 +74,6 @@ export interface Ticket {
   createdAt: string; updatedAt: string;
 }
 
-=======
->>>>>>> origin/main
 export interface DashboardSummary {
   totalPredictions: number;
   resolutionPredictions: number;

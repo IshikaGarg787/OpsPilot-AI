@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, RefreshCw, ShieldCheck, UserRoundCog } from 'lucide-react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Card, ErrorState, LoadingState, PageIntro } from '../components/ui';
 import { api, ApiError } from '../services/api';
 
 type WorkspaceUser = { id: string; name: string; email: string; role: 'customer' | 'it_team' | 'admin'; createdAt: string };
 
 export function UserManagementPage() {
-  const [users, setUsers] = useState<WorkspaceUser[] | null>(null); const [error, setError] = useState(''); const [busyUser, setBusyUser] = useState(''); const [notice, setNotice] = useState('');
-  async function load() { setError(''); try { setUsers((await api.tickets.users()).users as WorkspaceUser[]); } catch (err) { setError(err instanceof ApiError ? err.message : 'Workspace users are unavailable.'); } }
+  const [users, setUsers] = useState<WorkspaceUser[] | null>(null);
+  const [error, setError] = useState('');
+  async function load() {
+    setError('');
+    try { setUsers((await api.tickets.users()).users as WorkspaceUser[]); }
+    catch (err) { setError(err instanceof ApiError ? err.message : 'Workspace users are unavailable.'); }
+  }
   useEffect(() => { void load(); }, []);
-  async function updateRole(userId: string, role: WorkspaceUser['role']) { setBusyUser(userId); setNotice(''); setError(''); try { await api.tickets.setRole(userId, role); setNotice('Workspace role updated.'); await load(); } catch (err) { setError(err instanceof ApiError ? err.message : 'Could not update that role.'); } finally { setBusyUser(''); } }
-  if (error && !users) return <><PageIntro eyebrow="Admin controls" title="Users & roles" description="Manage customer, IT Team, and admin access." /><ErrorState message={error} onRetry={() => void load()} /></>;
-  if (!users) return <><PageIntro eyebrow="Admin controls" title="Users & roles" description="Manage customer, IT Team, and admin access." /><LoadingState label="Loading workspace users" /></>;
-  return <div className="page-stack"><PageIntro eyebrow="Admin controls" title="Users & roles" description="Provision access for customers and IT teammates. Keep at least one admin in the workspace." action={<button className="button button-ghost" onClick={() => void load()}><RefreshCw size={15} /> Refresh</button>} />{error && <div className="inline-error" role="alert"><AlertTriangle size={16} />{error}</div>}{notice && <div className="inline-success" role="status"><ShieldCheck size={16} />{notice}</div>}<Card title="Workspace members" className="user-management-card"><div className="user-table-wrap"><table className="data-table"><thead><tr><th>Member</th><th>Current role</th><th>Joined</th><th>Change role</th></tr></thead><tbody>{users.map((person) => <tr key={person.id}><td><span className="user-row-name"><span className="user-avatar-small">{person.name.slice(0,1).toUpperCase()}</span><span><strong>{person.name}</strong><small>{person.email}</small></span></span></td><td><span className={`role-badge role-${person.role}`}>{person.role === 'it_team' ? 'IT Team' : person.role}</span></td><td>{new Date(person.createdAt).toLocaleDateString()}</td><td><label className="sr-only" htmlFor={`role-${person.id}`}>Set role for {person.name}</label><select id={`role-${person.id}`} value={person.role} disabled={busyUser === person.id} onChange={(e) => void updateRole(person.id, e.target.value as WorkspaceUser['role'])}><option value="customer">Customer</option><option value="it_team">IT Team</option><option value="admin">Admin</option></select>{busyUser === person.id && <small className="field-help">Saving…</small>}</td></tr>)}</tbody></table></div><p className="field-help">Admin accounts are also limited to email addresses listed in the server's <code>ADMIN_EMAILS</code> setting at sign-up; an existing admin can manage roles here.</p></Card></div>;
+  if (error && !users) return <><PageIntro eyebrow="Admin controls" title="Users & roles" description="Review workspace accounts." /><ErrorState message={error} onRetry={() => void load()} /></>;
+  if (!users) return <><PageIntro eyebrow="Admin controls" title="Users & roles" description="Review workspace accounts." /><LoadingState label="Loading workspace users" /></>;
+  return <div className="page-stack"><PageIntro eyebrow="Admin controls" title="Users & roles" description="Review workspace accounts. Privileged roles are assigned through trusted provisioning only." action={<button className="button button-ghost" onClick={() => void load()}><RefreshCw size={15} /> Refresh</button>} />{error && <div className="inline-error" role="alert"><AlertTriangle size={16} />{error}</div>}<Card title="Workspace members" className="user-management-card"><div className="user-table-wrap"><table className="data-table"><thead><tr><th>Member</th><th>Current role</th><th>Joined</th></tr></thead><tbody>{users.map((person) => <tr key={person.id}><td><span className="user-row-name"><span className="user-avatar-small">{person.name.slice(0, 1).toUpperCase()}</span><span><strong>{person.name}</strong><small>{person.email}</small></span></span></td><td><span className={`role-badge role-${person.role}`}>{person.role === 'it_team' ? 'IT Team' : person.role}</span></td><td>{new Date(person.createdAt).toLocaleDateString()}</td></tr>)}</tbody></table></div><p className="field-help">Public signup creates a standard user account. The approved IT onboarding policy and Admin provisioning procedure are managed outside this page.</p></Card></div>;
 }

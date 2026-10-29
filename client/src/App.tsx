@@ -1,12 +1,9 @@
-<<<<<<< HEAD
-import { lazy, Suspense } from 'react';
-=======
->>>>>>> origin/main
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import { AppShell } from './components/AppShell';
 import { LoadingState } from './components/ui';
 import { useAuth } from './contexts/AuthContext';
-<<<<<<< HEAD
+import { api } from './services/api';
 
 const LandingPage = lazy(() => import('./pages/LandingPage').then((module) => ({ default: module.LandingPage })));
 const LoginPage = lazy(() => import('./pages/AuthPages').then((module) => ({ default: module.LoginPage })));
@@ -26,17 +23,6 @@ const TicketCreatePage = lazy(() => import('./pages/TicketPages').then((module) 
 const TicketDetailPage = lazy(() => import('./pages/TicketPages').then((module) => ({ default: module.TicketDetailPage })));
 const UserManagementPage = lazy(() => import('./pages/UserManagementPage').then((module) => ({ default: module.UserManagementPage })));
 const CapacityPlanPage = lazy(() => import('./pages/CapacityPlanPage').then((module) => ({ default: module.CapacityPlanPage })));
-=======
-import { AnalyticsPage } from './pages/AnalyticsPage';
-import { ComingSoonPage } from './pages/ComingSoonPage';
-import { LandingPage } from './pages/LandingPage';
-import { LoginPage, SignupPage } from './pages/AuthPages';
-import { DashboardPage, PredictionsPage } from './pages/DashboardPage';
-import { HistoryPage } from './pages/HistoryPage';
-import { ModelCenterPage } from './pages/ModelCenterPage';
-import { ResolutionPage } from './pages/ResolutionPage';
-import { SettingsPage } from './pages/SettingsPage';
->>>>>>> origin/main
 
 function ProtectedRoute() {
   const { user, loading } = useAuth(); const location = useLocation();
@@ -44,21 +30,21 @@ function ProtectedRoute() {
   return user ? <Outlet /> : <Navigate to="/login" replace state={{ from: location.pathname }} />;
 }
 
-<<<<<<< HEAD
 function AdminRoute() {
   const { user, loading } = useAuth();
   if (loading) return <div className="full-page-state"><LoadingState label="Checking workspace access" /></div>;
-  return user?.role === 'admin' ? <Outlet /> : <Navigate to="/app/tickets" replace />;
+  return user?.role === 'admin' ? <AdminOwnerRoute /> : <Navigate to="/app/tickets" replace />;
+}
+
+function AdminOwnerRoute() {
+  const [allowed, setAllowed] = useState<boolean | null>(null);
+  useEffect(() => { let active = true; api.admin.me().then(() => { if (active) setAllowed(true); }).catch(() => { if (active) setAllowed(false); }); return () => { active = false; }; }, []);
+  if (allowed === null) return <div className="full-page-state"><LoadingState label="Verifying Admin access" /></div>;
+  return allowed ? <Outlet /> : <Navigate to="/app/tickets" replace />;
 }
 
 function NotFound() { return <div className="full-page-state"><h1>Page not found</h1><p>The workspace route you requested does not exist.</p><Navigate to="/" replace /></div>; }
 
 export default function App() {
   return <BrowserRouter><Suspense fallback={<div className="full-page-state"><LoadingState label="Loading workspace" /></div>}><Routes><Route path="/" element={<LandingPage />} /><Route path="/login" element={<LoginPage />} /><Route path="/signup" element={<SignupPage />} /><Route element={<ProtectedRoute />}><Route path="/app" element={<AppShell />}><Route index element={<DashboardPage />} /><Route path="tickets" element={<TicketListPage />} /><Route path="tickets/new" element={<TicketCreatePage />} /><Route path="tickets/:ticketId" element={<TicketDetailPage />} /><Route path="resolution-time" element={<ResolutionPage />} /><Route path="models" element={<ModelCenterPage />} /><Route path="history" element={<HistoryPage />} /><Route path="analytics" element={<AnalyticsPage />} /><Route path="settings" element={<SettingsPage />} /><Route path="operational-risk" element={<ComingSoonPage />} /><Route element={<AdminRoute />}><Route path="users" element={<UserManagementPage />} /><Route path="predictions" element={<PredictionsPage />} /><Route path="triage" element={<TriagePage />} /><Route path="workload-forecasting" element={<WorkloadForecastPage />} /><Route path="capacity-plans" element={<CapacityPlanPage />} /></Route></Route></Route><Route path="*" element={<NotFound />} /></Routes></Suspense></BrowserRouter>;
-=======
-function NotFound() { return <div className="full-page-state"><h1>Page not found</h1><p>The workspace route you requested does not exist.</p><Navigate to="/" replace /></div>; }
-
-export default function App() {
-  return <BrowserRouter><Routes><Route path="/" element={<LandingPage />} /><Route path="/login" element={<LoginPage />} /><Route path="/signup" element={<SignupPage />} /><Route element={<ProtectedRoute />}><Route path="/app" element={<AppShell />}><Route index element={<DashboardPage />} /><Route path="predictions" element={<PredictionsPage />} /><Route path="resolution-time" element={<ResolutionPage />} /><Route path="models" element={<ModelCenterPage />} /><Route path="history" element={<HistoryPage />} /><Route path="analytics" element={<AnalyticsPage />} /><Route path="settings" element={<SettingsPage />} /><Route path="operational-risk" element={<ComingSoonPage />} /><Route path="workload-forecasting" element={<ComingSoonPage />} /></Route></Route><Route path="*" element={<NotFound />} /></Routes></BrowserRouter>;
->>>>>>> origin/main
 }
