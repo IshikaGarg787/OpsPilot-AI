@@ -103,9 +103,9 @@ export interface CapacityPlan { _id: string; horizon: 7 | 14; expectedDemand: nu
 
 export type TicketStatus = 'open' | 'triaged' | 'assigned' | 'in_progress' | 'waiting_customer' | 'resolved' | 'closed';
 export interface Ticket {
-  id: string; ticketNumber: string; ownerRole: 'customer' | 'it_team'; owner: string;
+  id: string; ticketNumber: string; ownerRole: 'customer' | 'it_team'; owner?: string;
   subject: string; description: string; category: string; priority: string; project: string;
-  status: TicketStatus; assignedTo?: { id: string; name: string; email: string } | null;
+  status: TicketStatus; assignedTo?: { id: string; name: string; email?: string } | null;
   estimatedResolutionAt?: string | null; delayExplanation?: string;
   sla?: TicketSla | null;
   workloadOutlook?: { historyStart?: string; historyEnd?: string; historyDays?: number; horizon?: 7 | 14; expectedTickets?: number; highLoadDays?: number; modelVersion?: string; generatedAt?: string; forecast?: Array<{ date: string; forecast: number; planningLow?: number; planningHigh?: number; highLoad?: boolean }> };
@@ -113,8 +113,37 @@ export interface Ticket {
   recommendation?: { action?: 'priority_review' | 'standard_queue'; state?: 'pending' | 'approved' | 'rejected' | 'modified'; rationale?: string; decisionNote?: string };
   responses: Array<{ _id: string; authorName: string; authorRole: AppRole; visibility: 'public' | 'internal'; message: string; resolutionNote?: string; createdAt: string }>;
   audit?: Array<{ _id: string; actorName: string; actorRole: AppRole; action: string; details?: string; createdAt: string }>;
+  customerTimeline?: CustomerTicketEvent[];
+  resolutionSummary?: string | null;
   attachments: Array<{ id: string; fileName: string; mimeType: string; size: number; createdAt: string }>;
   createdAt: string; updatedAt: string;
+}
+
+export interface CustomerTicketEvent {
+  id: string;
+  kind: 'created' | 'assigned' | 'status' | 'resolved' | 'closed' | 'reply';
+  label: string;
+  status?: TicketStatus;
+  createdAt: string;
+}
+
+export interface CustomerTicketActivity extends CustomerTicketEvent {
+  ticketId: string;
+  ticketNumber: string;
+  subject: string;
+}
+
+export interface CustomerDashboardData {
+  counts: { total: number; open: number; inProgress: number; resolved: number };
+  activity: CustomerTicketActivity[];
+}
+
+export interface CustomerTicketPage {
+  tickets: Ticket[];
+  page: number;
+  pageSize: number;
+  total: number;
+  pages: number;
 }
 
 export interface DashboardSummary {

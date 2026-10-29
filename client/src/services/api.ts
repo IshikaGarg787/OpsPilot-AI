@@ -1,4 +1,4 @@
-import type { DashboardActivity, DashboardSummary, ModelInfo, ModelMetadata, PaginatedPredictions, Prediction, ThemePreference, Ticket, TriageResult, User, WorkloadForecastHealth, WorkloadForecastResult } from '../types';
+import type { CustomerDashboardData, CustomerTicketPage, DashboardActivity, DashboardSummary, ModelInfo, ModelMetadata, PaginatedPredictions, Prediction, ThemePreference, Ticket, TicketStatus, TriageResult, User, WorkloadForecastHealth, WorkloadForecastResult } from '../types';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000/api/v1').replace(/\/$/, '');
 
@@ -51,8 +51,19 @@ export const api = {
   },
   tickets: {
     list: () => request<{ tickets: Ticket[] }>('/tickets'),
+    customerDashboard: () => request<CustomerDashboardData>('/tickets/customer/dashboard'),
+    customerList: (query: { page?: number; pageSize?: number; search?: string; status?: TicketStatus } = {}) => {
+      const params = new URLSearchParams();
+      if (query.page) params.set('page', String(query.page));
+      if (query.pageSize) params.set('pageSize', String(query.pageSize));
+      if (query.search?.trim()) params.set('search', query.search.trim());
+      if (query.status) params.set('status', query.status);
+      const queryString = params.toString();
+      return request<CustomerTicketPage>(`/tickets/customer${queryString ? `?${queryString}` : ''}`);
+    },
     get: (id: string) => request<{ ticket: Ticket }>(`/tickets/${id}`),
     create: (payload: { subject: string; description: string; category: string; priority: string; project: string }) => request<{ ticket: Ticket }>('/tickets', { method: 'POST', body: JSON.stringify(payload) }),
+    createCustomer: (payload: { subject: string; description: string; category: 'Assistance' }) => request<{ ticket: Ticket }>('/tickets', { method: 'POST', body: JSON.stringify(payload) }),
     respond: (id: string, payload: { message: string; visibility: 'public' | 'internal'; resolutionNote?: string }) => request<{ ticket: Ticket }>(`/tickets/${id}/responses`, { method: 'POST', body: JSON.stringify(payload) }),
     updateStatus: (id: string, payload: { status: string; resolutionNote?: string; delayExplanation?: string }) => request<{ ticket: Ticket }>(`/tickets/${id}/status`, { method: 'PATCH', body: JSON.stringify(payload) }),
     assign: (id: string, assigneeId: string) => request<{ ticket: Ticket }>(`/tickets/${id}/assignment`, { method: 'PATCH', body: JSON.stringify({ assigneeId }) }),
