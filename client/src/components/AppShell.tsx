@@ -1,15 +1,15 @@
 import { Activity, BarChart3, BrainCircuit, ChevronDown, Clock3, Gauge, History, LayoutDashboard, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings, Ticket, UserRoundCog, Plus, X, ShieldCheck } from 'lucide-react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { NavLink, useLocation, useNavigate, useOutlet } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
 import { Logo } from './Logo';
 import { ThemeToggle } from './ThemeToggle';
 import { useAuth } from '../contexts/AuthContext';
-import { TypewriterText } from './TypewriterText';
 
 const adminNavItems = [
   { to: '/app', label: 'Overview', icon: LayoutDashboard, end: true },
   { to: '/app/tickets', label: 'Ticket Queue', icon: Ticket },
-  { to: '/app/triage', label: 'AI Decision Flow', icon: BrainCircuit },
+  { to: '/app/triage', label: 'Pipeline', icon: BrainCircuit },
   { to: '/app/models', label: 'Model Center', icon: Gauge },
   { to: '/app/history', label: 'Prediction History', icon: History },
   { to: '/app/analytics', label: 'Analytics', icon: BarChart3 },
@@ -38,7 +38,7 @@ const pageNames: Record<string, string> = {
   '/app/tickets': 'Tickets',
   '/app/tickets/new': 'Raise a ticket',
   '/app/predictions': 'AI Predictions',
-  '/app/triage': 'AI Decision Flow',
+  '/app/triage': 'Pipeline',
   '/app/resolution-time': 'Resolution Time',
   '/app/models': 'Model Center',
   '/app/history': 'Prediction History',
@@ -57,6 +57,9 @@ export function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const reduceMotion = useReducedMotion();
+  const outlet = useOutlet();
+  const routeContentRef = useRef<HTMLDivElement>(null);
   const pageName = pageNames[location.pathname] ?? (location.pathname.startsWith('/app/tickets/') ? 'Ticket detail' : 'Workspace');
   const navItems = user?.role === 'admin' ? adminNavItems : user?.role === 'customer' ? customerNavItems : teamNavItems;
   const initials = user?.name.split(' ').map((name) => name[0]).slice(0, 2).join('').toUpperCase() ?? 'OP';
@@ -67,6 +70,35 @@ export function AppShell() {
   }
 
   const roleLabel = user?.role === 'admin' ? 'Admin' : user?.role === 'it_team' ? 'IT Team' : 'Customer';
+
+  useEffect(() => {
+    const root = routeContentRef.current;
+    if (!root || reduceMotion || !('IntersectionObserver' in window)) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add('scroll-reveal-visible');
+        observer.unobserve(entry.target);
+      });
+    }, { threshold: 0.08, rootMargin: '0px 0px -24px 0px' });
+    const observed = new WeakSet<Element>();
+    const observeTargets = () => {
+      root.querySelectorAll<HTMLElement>(
+        '.metric-card, .ticket-row, .ticket-audit-list > div, .customer-timeline li, .model-summary-row',
+      ).forEach((element, index) => {
+        if (observed.has(element)) return;
+        observed.add(element);
+        element.classList.add('scroll-reveal');
+        element.style.setProperty('--scroll-reveal-delay', `${Math.min(index, 5) * 38}ms`);
+        observer.observe(element);
+      });
+    };
+    const mutations = new MutationObserver(observeTargets);
+    observeTargets();
+    mutations.observe(root, { childList: true, subtree: true });
+    return () => { mutations.disconnect(); observer.disconnect(); };
+  }, [location.pathname, reduceMotion]);
 
   return (
     <div className={`app-shell ${collapsed ? 'sidebar-collapsed' : ''}`}>
@@ -99,8 +131,13 @@ export function AppShell() {
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
               title={collapsed ? label : undefined}
             >
-              <Icon size={18} />
-              <span>{!collapsed && label}</span>
+              {({ isActive }) => <>
+                {isActive && (reduceMotion
+                  ? <span className="nav-active-marker" aria-hidden="true" />
+                  : <motion.span className="nav-active-marker" layoutId="sidebar-active-marker" transition={{ type: 'spring', stiffness: 460, damping: 38 }} aria-hidden="true" />)}
+                <Icon size={18} />
+                <span>{!collapsed && label}</span>
+              </>}
             </NavLink>
           ))}
         </nav>
@@ -126,15 +163,6 @@ export function AppShell() {
               <span className="slash">/</span>
               <strong>{pageName}</strong>
             </div>
-            <p>
-              <TypewriterText
-                key={pageName}
-                text={pageName === 'Overview' ? 'Your operational signal, at a glance.' : 'Turn signal into a more decisive next step.'}
-                speed={20}
-                delay={50}
-                cursor={false}
-              />
-            </p>
           </div>
           <div className="topbar-actions">
             <ThemeToggle />
@@ -152,7 +180,19 @@ export function AppShell() {
           </div>
         </header>
         <div className="content-wrap">
-          <Outlet />
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              className="route-stage"
+              ref={routeContentRef}
+              key={location.pathname}
+              initial={reduceMotion ? false : { opacity: 0, y: 7 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
+              transition={reduceMotion ? { duration: 0 } : { duration: .18, ease: 'easeOut' }}
+            >
+              {outlet}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </main>
     </div>

@@ -1,13 +1,14 @@
-import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, Sparkles, UserRound } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, UserRound } from 'lucide-react';
 import { FormEvent, useMemo, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Logo } from '../components/Logo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { ApiError } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { DispatchScenePanel } from '../components/scene/DispatchScenePanel';
 
 function AuthLayout({ children, title, text }: { children: React.ReactNode; title: string; text: string }) {
-  return <div className="auth-page"><div className="auth-visual"><Logo /><div className="auth-visual-copy"><span className="eyebrow-pill"><Sparkles size={14} /> Ops intelligence, grounded</span><h1>Make the next move with more signal.</h1><p>OpsPilot AI gives operations teams a clear, honest view of their predictive workflow.</p><div className="auth-quote"><span><Check size={14} /></span><div><strong>Built around your actual workspace</strong><small>Start with your signals. Keep the context.</small></div></div></div><div className="auth-visual-footer"><span><ShieldCheck size={14} /> Protected workspace</span><span><LockKeyhole size={14} /> Secure session cookies</span></div></div><div className="auth-form-side"><div className="auth-top"><Link className="back-link" to="/"><ArrowLeft size={16} /> Back to home</Link><ThemeToggle /></div><div className="auth-form-wrap"><span className="eyebrow">{title === 'Create your workspace' ? 'Start here' : 'Welcome back'}</span><h2>{title}</h2><p className="auth-intro">{text}</p>{children}</div><p className="auth-bottom">OpsPilot AI · Operational intelligence for decisive teams</p></div></div>;
+  return <div className="auth-page"><div className="auth-visual"><Logo /><DispatchScenePanel variant="auth" className="auth-scene-backdrop" /><div className="auth-visual-copy"><span className="dispatch-kicker">Dispatch desk <span>·</span> Secure workspace</span><h1>Know what needs attention next.</h1><p>Review ticket risk, resolution estimates, and workload context in one operational workspace.</p><div className="auth-quote"><span><Check size={14} /></span><div><strong>Built around your actual workspace</strong><small>Estimates stay grounded in their available evidence.</small></div></div></div><div className="auth-visual-footer"><span><ShieldCheck size={14} /> Protected workspace</span><span><LockKeyhole size={14} /> Secure session cookies</span></div></div><div className="auth-form-side"><div className="auth-top"><Link className="back-link" to="/"><ArrowLeft size={16} /> Back to home</Link><ThemeToggle /></div><div className="auth-form-wrap"><span className="eyebrow">{title === 'Create your workspace' ? 'Start here' : 'Welcome back'}</span><h2>{title}</h2><p className="auth-intro">{text}</p>{children}</div><p className="auth-bottom">OpsPilot AI · Operational intelligence for decisive teams</p></div></div>;
 }
 
 function Field({ label, icon: Icon, type = 'text', value, onChange, placeholder, error, trailing }: { label: string; icon: typeof Mail; type?: string; value: string; onChange: (value: string) => void; placeholder: string; error?: string; trailing?: React.ReactNode }) {
@@ -24,7 +25,7 @@ export function LoginPage() {
   const roleNames = { customer: 'Customer', it_team: 'IT Team', admin: 'Admin' } as const;
   async function submit(event: FormEvent) { event.preventDefault(); setError(''); if (!selectedRole) { setError('Choose your role first.'); return; } if (!email || !password) { setError('Enter both your email and password.'); return; } setBusy(true); try { await login(email, password, remember, selectedRole); navigate((location.state as { from?: string } | null)?.from ?? '/app', { replace: true }); } catch (err) { setError(err instanceof ApiError ? err.message : 'Unable to sign in right now.'); } finally { setBusy(false); } }
   return <AuthLayout title="Welcome back" text={selectedRole ? `Sign in to your ${roleNames[selectedRole]} account.` : 'Choose which type of account you want to sign in with.'}>
-    {!selectedRole ? <div className="auth-form">
+    {!selectedRole ? <div className="auth-form role-choice-list">
       <button className="button button-secondary button-full button-large" type="button" onClick={() => setSelectedRole('customer')}><UserRound size={18} /> Customer</button>
       <button className="button button-secondary button-full button-large" type="button" onClick={() => setSelectedRole('it_team')}><ShieldCheck size={18} /> IT Team</button>
       <button className="button button-secondary button-full button-large" type="button" onClick={() => setSelectedRole('admin')}><ShieldCheck size={18} /> Admin</button>

@@ -1,4 +1,4 @@
-import { AlertCircle, ArrowUpRight, CheckCircle2, ChevronRight, LoaderCircle, Sparkles } from 'lucide-react';
+import { AlertCircle, ArrowUpRight, CheckCircle2, ChevronRight, Info, Inbox, LoaderCircle, type LucideIcon } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { ModelStatus } from '../types';
 
@@ -25,7 +25,7 @@ export function PageIntro({ eyebrow, title, description, action }: { eyebrow?: s
   return <div ref={ref} className={`page-intro ${visible ? 'reveal-visible' : 'reveal-pending'}`}><div>{eyebrow && <p className="eyebrow">{eyebrow}</p>}<h1>{title}</h1>{description && <p className="page-description">{description}</p>}</div>{action}</div>;
 }
 
-export function MetricCard({ label, value, detail, icon: Icon, accent = 'blue' }: { label: string; value: string; detail?: string; icon: typeof Sparkles; accent?: 'blue' | 'teal' | 'violet' | 'amber' }) {
+export function MetricCard({ label, value, detail, icon: Icon, accent = 'blue' }: { label: string; value: string; detail?: string; icon: LucideIcon; accent?: 'blue' | 'teal' | 'violet' | 'amber' }) {
   return <article className={`metric-card metric-${accent}`}><div className="metric-top"><span>{label}</span><span className="metric-icon"><Icon size={18} /></span></div><strong>{value}</strong>{detail && <small>{detail}</small>}</article>;
 }
 
@@ -52,7 +52,7 @@ export function LoadingState({ label = 'Loading workspace' }: { label?: string }
 }
 
 export function EmptyState({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
-  return <div className="state-block empty-state"><span className="empty-icon"><Sparkles size={19} /></span><strong>{title}</strong><span>{description}</span>{action}</div>;
+  return <div className="state-block empty-state"><span className="empty-icon"><Inbox size={19} /></span><strong>{title}</strong><span>{description}</span>{action}</div>;
 }
 
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
@@ -60,7 +60,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
 }
 
 export function Notice({ children, variant = 'info' }: { children: ReactNode; variant?: 'info' | 'warning' | 'success' }) {
-  return <div className={`notice notice-${variant}`}><span>{variant === 'warning' ? <AlertCircle size={17} /> : variant === 'success' ? <CheckCircle2 size={17} /> : <Sparkles size={17} />}</span><div>{children}</div></div>;
+  return <div className={`notice notice-${variant}`}><span>{variant === 'warning' ? <AlertCircle size={17} /> : variant === 'success' ? <CheckCircle2 size={17} /> : <Info size={17} />}</span><div>{children}</div></div>;
 }
 
 export function LinkArrow({ children }: { children: ReactNode }) {
