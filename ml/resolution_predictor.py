@@ -16,11 +16,6 @@ import numpy as np
 import pandas as pd
 
 
-<<<<<<< HEAD
-DEFAULT_ARTIFACT_PATH = (
-    Path(__file__).resolve().parent / "artifacts" / "resolution" / "resolution_model.joblib"
-)
-=======
 from sklearn.base import BaseEstimator, RegressorMixin, clone
 
 
@@ -54,7 +49,6 @@ CANDIDATE_V2_PATH = (
 V3_METADATA_PATH = (
     Path(__file__).resolve().parent / "artifacts" / "resolution" / "resolution_model_v3_metadata.json"
 )
->>>>>>> origin/main
 RAW_INPUT_COLUMNS = ("issue_created", "issue_priority", "issue_type", "issue_proj")
 CATEGORICAL_FEATURES = ("issue_priority", "issue_type", "issue_proj")
 NUMERIC_FEATURES = (
@@ -122,17 +116,10 @@ def build_resolution_features(
         features[column] = frame[column].astype("string")
     features["created_year"] = created.dt.year.astype("float64")
     features["created_month"] = created.dt.month.astype("float64")
-<<<<<<< HEAD
-    features["created_dayofweek"] = created.dt.day_of_week.astype("float64")
-    features["created_hour"] = created.dt.hour.astype("float64")
-    features["created_dayofmonth"] = created.dt.day.astype("float64")
-    features["created_is_weekend"] = (created.dt.day_of_week >= 5).astype("float64")
-=======
     features["created_dayofweek"] = created.dt.dayofweek.astype("float64")
     features["created_hour"] = created.dt.hour.astype("float64")
     features["created_dayofmonth"] = created.dt.day.astype("float64")
     features["created_is_weekend"] = (created.dt.dayofweek >= 5).astype("float64")
->>>>>>> origin/main
     return features.loc[:, list(ENGINEERED_FEATURE_COLUMNS)]
 
 
