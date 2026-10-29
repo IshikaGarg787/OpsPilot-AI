@@ -22,8 +22,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 export const api = {
   auth: {
     me: () => request<{ user: User }>('/auth/me'),
-    login: (payload: { email: string; password: string; remember: boolean }) => request<{ user: User }>('/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
-    signup: (payload: { name: string; email: string; password: string; role: 'customer' | 'it_team'; termsAccepted: boolean }) => request<{ user: User }>('/auth/signup', { method: 'POST', body: JSON.stringify(payload) }),
+    login: (payload: { email: string; password: string; remember: boolean; expectedRole: 'customer' | 'it_team' | 'admin' }) => request<{ user: User }>('/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
+    signup: (payload: { name: string; email: string; password: string; termsAccepted: boolean }) => request<{ user: User }>('/auth/signup', { method: 'POST', body: JSON.stringify(payload) }),
     logout: () => request<null>('/auth/logout', { method: 'POST' }),
   },
   users: {

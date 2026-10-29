@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ADMIN_OWNER_USERNAME } from '../security/adminPolicy.js';
+import { ADMIN_OWNER_EMAIL, ADMIN_OWNER_USERNAME } from '../security/adminPolicy.js';
 
 export const ADMIN_USERNAME = ADMIN_OWNER_USERNAME;
 const USERNAME_CONFIRMATION = `PROVISION ${ADMIN_USERNAME}`;
@@ -48,6 +48,7 @@ export function parseAdminProvisioningConfig(values: Record<string, string | und
   if (username !== ADMIN_USERNAME) throw new Error('ADMIN_USERNAME must match the fixed owner username.');
   if (values.ADMIN_OWNER_EMAIL_VERIFIED !== 'true') throw new Error('Owner email verification must be explicitly confirmed.');
   const ownerEmail = emailSchema.parse(values.ADMIN_OWNER_EMAIL ?? '');
+  if (ownerEmail !== ADMIN_OWNER_EMAIL) throw new Error('ADMIN_OWNER_EMAIL must match the fixed workspace owner email.');
   const ownerName = values.ADMIN_OWNER_NAME?.trim();
   if (!ownerName || ownerName.length < 2 || ownerName.length > 100) throw new Error('ADMIN_OWNER_NAME must be configured.');
 
