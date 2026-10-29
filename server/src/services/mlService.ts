@@ -6,19 +6,11 @@ export class MlServiceError extends Error {
   }
 }
 
-<<<<<<< HEAD
 async function request(path: string, init: RequestInit = {}, timeoutMs = 6000, baseUrl = env.mlServiceUrl) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(`${baseUrl}${path}`, { ...init, signal: controller.signal, headers: { 'content-type': 'application/json', ...(init.headers ?? {}) } });
-=======
-async function request(path: string, init: RequestInit = {}, timeoutMs = 6000) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await fetch(`${env.mlServiceUrl}${path}`, { ...init, signal: controller.signal, headers: { 'content-type': 'application/json', ...(init.headers ?? {}) } });
->>>>>>> origin/main
     const body = await response.json().catch(() => null) as Record<string, unknown> | null;
     if (!response.ok) {
       const message = typeof body?.detail === 'string' ? body.detail : 'The model service rejected the request.';
@@ -51,7 +43,6 @@ export function predictResolution(payload: Record<string, string>) {
   return request('/predict/resolution-time', { method: 'POST', body: JSON.stringify(payload) }, 10000);
 }
 
-<<<<<<< HEAD
 export async function checkWorkloadForecastHealth() {
   try {
     const result = await request('/forecast/health', {}, 2500);
@@ -76,12 +67,4 @@ export function predictDelayRisk(payload: Record<string, string>) {
 
 export function forecastWorkload(records: Record<string, unknown>[], horizon: 7 | 14) {
   return request('/forecast/workload', { method: 'POST', body: JSON.stringify({ records, horizon }) }, 60000);
-=======
-export function predictDelayRisk(payload: Record<string, unknown>) {
-  return request('/predict/delay-risk', { method: 'POST', body: JSON.stringify(payload) }, 10000);
-}
-
-export function getWorkloadForecast(horizon = 7) {
-  return request(`/forecast/workload?horizon=${horizon}`, {}, 10000);
->>>>>>> origin/main
 }

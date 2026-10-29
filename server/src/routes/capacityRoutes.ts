@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { requireAuth, requireRole } from '../middleware/auth.js';
+import { requireAdminOwner, requireAuth, requireRole } from '../middleware/auth.js';
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js';
 import { CapacityPlanModel } from '../models/CapacityPlan.js';
 import { TicketModel } from '../models/Ticket.js';
 
 const router = Router();
-router.use(requireAuth, requireRole('admin'));
+router.use(requireAuth, requireRole('admin'), requireAdminOwner);
 const planSchema = z.object({
   ticketId: z.string().regex(/^[a-f\d]{24}$/i),
   horizon: z.union([z.literal(7), z.literal(14)]),

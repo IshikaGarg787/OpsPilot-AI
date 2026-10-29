@@ -4,16 +4,9 @@ import { UserModel, publicUser } from '../models/User.js';
 import { SessionModel } from '../models/Session.js';
 import { createSession, clearSessionCookie, destroySession, requireAuth, setSessionCookie } from '../middleware/auth.js';
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js';
-<<<<<<< HEAD
-import { findUserForLogin, hashPassword, verifyPassword } from '../services/authService.js';
-import { loginSchema, signupSchema } from '../validators/schemas.js';
-import { databaseStatus } from '../config/database.js';
-import { env } from '../config/env.js';
-=======
 import { findUserForLogin, hashPassword, publicSignupUserFields, verifyPassword } from '../services/authService.js';
 import { loginSchema, signupSchema } from '../validators/schemas.js';
 import { databaseStatus } from '../config/database.js';
->>>>>>> origin/main
 
 const router = Router();
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: 'draft-8', legacyHeaders: false, message: { success: false, message: 'Too many authentication attempts. Try again later.', code: 'AUTH_RATE_LIMIT' } });
@@ -27,12 +20,7 @@ router.post('/signup', authLimiter, asyncHandler(async (req, res) => {
   const input = signupSchema.parse(req.body);
   const exists = await UserModel.exists({ email: input.email });
   if (exists) throw new HttpError(409, 'An account with this email already exists.', 'EMAIL_IN_USE');
-<<<<<<< HEAD
-  const role = env.adminEmails.includes(input.email) ? 'admin' : input.role;
-  const user = await UserModel.create({ name: input.name, email: input.email, role, passwordHash: await hashPassword(input.password) });
-=======
   const user = await UserModel.create(publicSignupUserFields({ name: input.name, email: input.email, passwordHash: await hashPassword(input.password) }));
->>>>>>> origin/main
   const session = await createSession(user._id.toString());
   setSessionCookie(res, session.token);
   res.status(201).json({ success: true, data: { user: publicUser(user) }, message: 'Account created.' });

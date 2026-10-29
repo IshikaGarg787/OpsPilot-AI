@@ -33,11 +33,7 @@ router.get('/summary', asyncHandler(async (req, res) => {
     listModels(),
   ]);
   const totalPredictions = counts.reduce((sum, row) => sum + row.count, 0);
-<<<<<<< HEAD
   const resolution = counts.filter((row) => ['resolution-time', 'triage-pipeline'].includes(row._id)).reduce((sum, row) => sum + row.count, 0);
-=======
-  const resolution = counts.find((row) => row._id === 'resolution-time')?.count ?? 0;
->>>>>>> origin/main
   res.json({ success: true, data: { totalPredictions, resolutionPredictions: resolution, averageResolutionHours: average[0]?.value ?? null, availableModels: models.filter((model) => model.status === 'available').length, models } });
 }));
 
@@ -51,11 +47,7 @@ router.get('/activity', asyncHandler(async (req, res) => {
       { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, count: { $sum: 1 }, averageHours: { $avg: '$output.duration' } } },
       { $sort: { _id: 1 } },
     ]),
-<<<<<<< HEAD
     PredictionModel.aggregate([{ $match: { userId, status: 'success', modelId: { $in: ['resolution-time', 'triage-pipeline'] } } }, { $group: { _id: '$input.priority', count: { $sum: 1 } } }, { $sort: { count: -1 } }]),
-=======
-    PredictionModel.aggregate([{ $match: { userId, status: 'success', modelId: 'resolution-time' } }, { $group: { _id: '$input.priority', count: { $sum: 1 } } }, { $sort: { count: -1 } }]),
->>>>>>> origin/main
   ]);
   res.json({ success: true, data: { recent: recent.map(serialize), daily, byPriority } });
 }));

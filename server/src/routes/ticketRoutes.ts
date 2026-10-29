@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { Router, raw } from 'express';
-import { requireAuth, requireRole } from '../middleware/auth.js';
+import { requireAdminOwner, requireAuth, requireOwnerAdminWhenPresent, requireRole } from '../middleware/auth.js';
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js';
 import { TicketModel } from '../models/Ticket.js';
 import { TicketAttachmentModel } from '../models/TicketAttachment.js';
@@ -11,7 +11,7 @@ import { recommendationDecisionSchema, ticketAssignmentSchema, ticketCreateSchem
 import { z } from 'zod';
 
 const router = Router();
-router.use(requireAuth);
+router.use(requireAuth, requireOwnerAdminWhenPresent);
 
 const riskSchema = z.object({
   risk_probability: z.number().finite().min(0).max(1),
@@ -62,7 +62,7 @@ async function serialize(ticket: any, role: string) {
   };
 }
 
-router.get('/assignees', requireRole('admin'), asyncHandler(async (_req, res) => {
+router.get('/assignees', requireRole('admin'), requireAdminOwner, asyncHandler(async (_req, res) => {
   const users = await UserModel.find({ role: 'it_team' }).sort({ name: 1 }).select('name email role').lean();
   res.json({ success: true, data: { users: users.map((user: any) => ({ id: String(user._id), name: user.name, email: user.email })) } });
 }));
@@ -149,7 +149,7 @@ router.patch('/:ticketId/status', asyncHandler(async (req, res) => {
   res.json({ success: true, data: { ticket: await serialize(ticket, role) }, message: 'Ticket status updated.' });
 }));
 
-router.patch('/:ticketId/assignment', requireRole('admin'), asyncHandler(async (req, res) => {
+router.patch('/:ticketId/assignment', requireRole('admin'), requireAdminOwner, asyncHandler(async (req, res) => {
   const ticket = await getAccessibleTicket(String(req.params.ticketId), req.user!);
   const input = ticketAssignmentSchema.parse(req.body);
   const assignee = await UserModel.findOne({ _id: input.assigneeId, role: 'it_team' });
@@ -162,7 +162,7 @@ router.patch('/:ticketId/assignment', requireRole('admin'), asyncHandler(async (
   res.json({ success: true, data: { ticket: await serialize(ticket, 'admin') }, message: 'Ticket assigned.' });
 }));
 
-router.patch('/:ticketId/priority', requireRole('admin'), asyncHandler(async (req, res) => {
+router.patch('/:ticketId/priority', requireRole('admin'), requireAdminOwner, asyncHandler(async (req, res) => {
   const ticket = await getAccessibleTicket(String(req.params.ticketId), req.user!);
   const input = z.object({ priority: z.string().trim().min(1).max(100), note: z.string().trim().min(2).max(500) }).parse(req.body);
   const previous = ticket.priority;
@@ -172,7 +172,7 @@ router.patch('/:ticketId/priority', requireRole('admin'), asyncHandler(async (re
   res.json({ success: true, data: { ticket: await serialize(ticket, 'admin') }, message: 'Ticket priority updated.' });
 }));
 
-router.post('/:ticketId/recommendation-decision', requireRole('admin'), asyncHandler(async (req, res) => {
+router.post('/:ticketId/recommendation-decision', requireRole('admin'), requireAdminOwner, asyncHandler(async (req, res) => {
   const ticket = await getAccessibleTicket(String(req.params.ticketId), req.user!);
   const input = recommendationDecisionSchema.parse(req.body);
   if (!ticket.recommendation?.action) throw new HttpError(409, 'There is no model recommendation to review.', 'RECOMMENDATION_UNAVAILABLE');

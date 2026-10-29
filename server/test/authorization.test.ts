@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import type { Request, Response } from 'express';
 import type { UserDocument } from '../src/models/User.js';
 import { HttpError } from '../src/middleware/errorHandler.js';
-import { requireAdminOwner, requireAuth, requireRole } from '../src/middleware/auth.js';
+import { requireAdminOwner, requireAuth, requireOwnerAdminWhenPresent, requireRole } from '../src/middleware/auth.js';
 import { adminAuthorization } from '../src/routes/adminRoutes.js';
 
 function invokeRoleGuard(role: string | undefined, allowedRoles: string[], username?: string) {
@@ -61,6 +61,25 @@ test('role guard permits every explicitly allowed role', () => {
     assert.equal(result.nextCalled, true);
     assert.equal(result.nextError, undefined);
   }
+});
+
+test('legacy user role is accepted as Customer without changing its stored role', () => {
+  const result = invokeRoleGuard('user', ['customer']);
+  assert.equal(result.nextCalled, true);
+  assert.equal(result.nextError, undefined);
+});
+
+test('mixed ticket authorization allows ordinary users but rejects non-owner Admin records', () => {
+  const ordinary = { user: { role: 'user', username: 'customer1' } } as unknown as Request;
+  let ordinaryError: unknown;
+  requireOwnerAdminWhenPresent(ordinary, {} as Response, (error?: unknown) => { ordinaryError = error; });
+  assert.equal(ordinaryError, undefined);
+
+  const secondAdmin = { user: { role: 'admin', username: 'another-admin' } } as unknown as Request;
+  let adminError: unknown;
+  requireOwnerAdminWhenPresent(secondAdmin, {} as Response, (error?: unknown) => { adminError = error; });
+  assert.ok(adminError instanceof HttpError);
+  assert.equal((adminError as HttpError).status, 403);
 });
 
 test('Admin authorization requires both authenticated Admin role and the provisioned owner username', () => {

@@ -16,15 +16,10 @@ export async function connectDatabase() {
     console.log('MongoDB connected');
     return true;
   } catch (error) {
-<<<<<<< HEAD
-    connectionError = error instanceof Error ? error.message : 'MongoDB connection failed';
-    console.error('MongoDB connection failed:', connectionError);
-=======
     // Driver errors can include hostnames and connection details. Keep them out of
     // application logs and health responses; operators can diagnose via Atlas.
     connectionError = 'MongoDB connection failed; verify database configuration and availability.';
     console.error('MongoDB connection failed (details redacted).');
->>>>>>> origin/main
     return false;
   }
 }

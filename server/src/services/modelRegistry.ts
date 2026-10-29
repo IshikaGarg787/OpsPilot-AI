@@ -2,11 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { env } from '../config/env.js';
-<<<<<<< HEAD
 import { checkDelayRiskHealth, checkMlHealth, checkWorkloadForecastHealth, getMlMetadata } from './mlService.js';
-=======
-import { checkMlHealth, getMlMetadata } from './mlService.js';
->>>>>>> origin/main
 
 export type ModelStatus = 'available' | 'coming_soon' | 'unavailable';
 
@@ -24,33 +20,19 @@ const baseModels = [
     id: 'operational-risk',
     displayName: 'Operational Risk / Bottleneck Intelligence',
     shortName: 'Risk intelligence',
-<<<<<<< HEAD
     description: 'Estimate the probability of a ticket exceeding the model’s 30-day historical delay target using leakage-safe ticket and historical signals.',
     status: 'unavailable' as ModelStatus,
     inputSchema: 'issue_created, issue_priority, issue_type, issue_proj, anonymized intake cohort',
     outputSchema: 'calibrated probability, risk band, high-recall review flag',
-=======
-    description: 'A reserved integration surface for future bottleneck and operational risk signals.',
-    status: 'coming_soon' as ModelStatus,
-    inputSchema: null,
-    outputSchema: null,
->>>>>>> origin/main
   },
   {
     id: 'workload-forecasting',
     displayName: 'Workload / Operations Forecasting',
     shortName: 'Workload forecasting',
-<<<<<<< HEAD
     description: 'Refit a tuned XGBoost ensemble on refreshed ticket CSV data to forecast daily workload.',
     status: 'unavailable' as ModelStatus,
     inputSchema: 'issue_created, issue_type OR date, ticket_count',
     outputSchema: 'daily forecast, planning range, high-load flags',
-=======
-    description: 'A reserved integration surface for future capacity and workload forecasting.',
-    status: 'coming_soon' as ModelStatus,
-    inputSchema: null,
-    outputSchema: null,
->>>>>>> origin/main
   },
 ];
 
@@ -66,8 +48,6 @@ function artifactDir() {
 
 function readEvaluation() {
   try {
-<<<<<<< HEAD
-=======
     const v3Path = path.resolve(artifactDir(), '../../experiments/resolution_v3_evaluation.json');
     if (fs.existsSync(v3Path)) {
       const report = JSON.parse(fs.readFileSync(v3Path, 'utf8')) as Record<string, any>;
@@ -86,7 +66,6 @@ function readEvaluation() {
         baselineImprovementHours: median.mae_hours - metrics.mae_hours,
       };
     }
->>>>>>> origin/main
     const metricsPath = path.join(artifactDir(), 'metrics.json');
     const metrics = JSON.parse(fs.readFileSync(metricsPath, 'utf8')) as Record<string, any>;
     return {
@@ -103,40 +82,8 @@ function readEvaluation() {
 }
 
 export async function listModels() {
-<<<<<<< HEAD
   const [health, riskHealth, forecastHealth] = await Promise.all([checkMlHealth(), checkDelayRiskHealth(), checkWorkloadForecastHealth()]);
   return baseModels.map((model) => model.id === 'resolution-time' ? { ...model, status: health.available ? 'available' : 'unavailable', health: health.data, evaluation: readEvaluation() } : model.id === 'operational-risk' ? { ...model, status: riskHealth.available ? 'available' : 'unavailable', health: riskHealth.data } : model.id === 'workload-forecasting' ? { ...model, status: forecastHealth.available ? 'available' : 'unavailable', health: forecastHealth.data } : model);
-=======
-  const health = await checkMlHealth();
-  const modelsStatus = (health.data as any)?.models || {};
-  return baseModels.map((model) => {
-    if (model.id === 'resolution-time') {
-      return {
-        ...model,
-        status: (modelsStatus['resolution-time'] === 'available' || health.available && !Object.keys(modelsStatus).length ? 'available' : 'unavailable') as ModelStatus,
-        health: health.data,
-        evaluation: readEvaluation(),
-      };
-    }
-    if (model.id === 'operational-risk') {
-      return {
-        ...model,
-        status: (modelsStatus['delay-risk'] === 'available' ? 'available' : 'coming_soon') as ModelStatus,
-        inputSchema: 'issue_created, issue_priority, issue_type, issue_proj, issue_reporter',
-        outputSchema: 'risk_probability, risk_band, predicted_delayed, top_contributing_factors',
-      };
-    }
-    if (model.id === 'workload-forecasting') {
-      return {
-        ...model,
-        status: (modelsStatus['workload-forecasting'] === 'available' ? 'available' : 'coming_soon') as ModelStatus,
-        inputSchema: 'horizon in days (7, 14, 30)',
-        outputSchema: 'forecast, lower_90, upper_90, high_load_flag, weekly_total_tickets',
-      };
-    }
-    return model;
-  });
->>>>>>> origin/main
 }
 
 export async function getModel(modelId: string) {

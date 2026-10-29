@@ -14,11 +14,7 @@ export const env = {
     .filter(Boolean),
   mongodbUri: process.env.MONGODB_URI ?? '',
   mlServiceUrl: (process.env.ML_SERVICE_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, ''),
-<<<<<<< HEAD
   delayRiskServiceUrl: (process.env.DELAY_RISK_SERVICE_URL ?? 'http://127.0.0.1:8001').replace(/\/$/, ''),
-  adminEmails: (process.env.ADMIN_EMAILS ?? '').split(',').map((email) => email.trim().toLowerCase()).filter(Boolean),
-=======
->>>>>>> origin/main
   sessionSecret: process.env.SESSION_SECRET ?? '',
   cookieSecure: asBoolean(process.env.COOKIE_SECURE, false),
   mlArtifactDir: process.env.ML_ARTIFACT_DIR ?? '../ml/artifacts/resolution',

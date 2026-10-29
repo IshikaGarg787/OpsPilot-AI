@@ -11,16 +11,12 @@ const predictionSchema = new mongoose.Schema(
       priority: { type: String, required: true },
       issueType: { type: String, required: true },
       project: { type: String, required: true },
-<<<<<<< HEAD
       complaint: { type: String, trim: true, maxlength: 3000 },
       ticketId: { type: mongoose.Schema.Types.ObjectId, ref: 'Ticket' },
-=======
->>>>>>> origin/main
     },
     output: {
       duration: { type: Number, min: 0 },
       unit: { type: String, enum: ['hours'], default: 'hours' },
-<<<<<<< HEAD
       delayRisk: {
         probability: { type: Number, min: 0, max: 1 },
         category: { type: String, enum: ['low', 'medium', 'high'] },
@@ -47,8 +43,6 @@ const predictionSchema = new mongoose.Schema(
           highLoad: { type: Boolean, required: true },
         }],
       },
-=======
->>>>>>> origin/main
     },
     status: { type: String, enum: ['success', 'failed'], required: true, index: true },
     errorCode: { type: String },

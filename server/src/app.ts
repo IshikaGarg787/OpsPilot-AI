@@ -5,20 +5,14 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { env } from './config/env.js';
 import authRoutes from './routes/authRoutes.js';
-<<<<<<< HEAD
-=======
 import adminRoutes from './routes/adminRoutes.js';
->>>>>>> origin/main
 import userRoutes from './routes/userRoutes.js';
 import modelRoutes from './routes/modelRoutes.js';
 import predictionRoutes from './routes/predictionRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import healthRoutes from './routes/healthRoutes.js';
-<<<<<<< HEAD
 import ticketRoutes from './routes/ticketRoutes.js';
 import capacityRoutes from './routes/capacityRoutes.js';
-=======
->>>>>>> origin/main
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 const app = express();
@@ -40,19 +34,13 @@ app.use(originGuard);
 
 app.use('/api/v1/health', healthRoutes);
 app.use('/api/v1/auth', authRoutes);
-<<<<<<< HEAD
-=======
 app.use('/api/v1/admin', adminRoutes);
->>>>>>> origin/main
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/models', modelRoutes);
 app.use('/api/v1/predictions', predictionRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
-<<<<<<< HEAD
 app.use('/api/v1/tickets', ticketRoutes);
 app.use('/api/v1/capacity-plans', capacityRoutes);
-=======
->>>>>>> origin/main
 app.use(notFound);
 app.use(errorHandler);
 

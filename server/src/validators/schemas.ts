@@ -6,10 +6,6 @@ export const signupSchema = z.object({
   name: z.string().trim().min(2, 'Use at least 2 characters.').max(100),
   email: z.string().trim().toLowerCase().email('Enter a valid work email.'),
   password: z.string().min(8, 'Use at least 8 characters.').max(128),
-<<<<<<< HEAD
-  role: z.enum(['customer', 'it_team']).optional().default('customer'),
-=======
->>>>>>> origin/main
   termsAccepted: z.literal(true, { error: 'Accept the terms to create an account.' }),
 });
 
@@ -26,7 +22,6 @@ export const resolutionPredictionSchema = z.object({
   issue_proj: z.string().trim().min(1).max(200),
 });
 
-<<<<<<< HEAD
 export const triagePipelineSchema = z.object({
   complaint: z.string().trim().min(8, 'Describe the customer complaint.').max(3000),
   ticketId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
@@ -66,12 +61,6 @@ export const recommendationDecisionSchema = z.object({
   action: z.enum(['priority_review', 'standard_queue']).optional(),
   note: z.string().trim().min(2).max(2000),
 });
-export const userRoleSchema = z.object({ role: z.enum(['customer', 'it_team', 'admin']) });
-=======
-export const profileSchema = z.object({ name: z.string().trim().min(2).max(100) });
-export const preferenceSchema = z.object({ themePreference: z.enum(['light', 'dark', 'system']) });
->>>>>>> origin/main
-
 export const listQuerySchema = z.object({
   page: z.coerce.number().int().min(1).max(10000).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
