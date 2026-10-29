@@ -38,7 +38,7 @@ To provision the owner account, temporarily set the following in `server/.env` a
 ```text
 ADMIN_PROVISION_ACTION=provision
 ADMIN_USERNAME=deepti10648
-ADMIN_OWNER_EMAIL=the-owner-email
+ADMIN_OWNER_EMAIL=deepti10648@gmail.com
 ADMIN_OWNER_EMAIL_VERIFIED=true
 ADMIN_OWNER_NAME=Owner name
 ADMIN_INITIAL_PASSWORD=a-new-strong-password-at-least-16-characters

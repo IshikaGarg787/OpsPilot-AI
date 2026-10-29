@@ -6,7 +6,6 @@ export const signupSchema = z.object({
   name: z.string().trim().min(2, 'Use at least 2 characters.').max(100),
   email: z.string().trim().toLowerCase().email('Enter a valid work email.'),
   password: z.string().min(8, 'Use at least 8 characters.').max(128),
-  role: z.enum(['customer', 'it_team']).optional().default('customer'),
   termsAccepted: z.literal(true, { error: 'Accept the terms to create an account.' }),
 });
 
@@ -14,6 +13,7 @@ export const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email('Enter a valid email.'),
   password: z.string().min(1, 'Enter your password.'),
   remember: z.boolean().optional().default(false),
+  expectedRole: z.enum(['customer', 'it_team', 'admin']).optional().default('customer'),
 });
 
 export const resolutionPredictionSchema = z.object({
