@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Moon, Palette, ShieldAlert, Sparkles, Sun, Terminal } from 'lucide-react';
+import { Check, Leaf, Moon, Palette, Sparkles, Sun } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -17,43 +17,43 @@ interface ThemeOption {
 const themeOptions: ThemeOption[] = [
   {
     id: 'dark',
-    name: 'Graphite Night',
-    category: 'Low-glare neutral dark',
+    name: 'Forest After Hours',
+    category: 'Recommended · deep evergreen surfaces',
     icon: Moon,
-    color: '#0b1020',
-    accent: '#73a7ff',
+    color: '#14231b',
+    accent: '#8bb49a',
   },
   {
     id: 'light',
-    name: 'Operations Slate',
-    category: 'Recommended · clear daylight surfaces',
+    name: 'Warm Operations',
+    category: 'Ivory surfaces with forest and clay accents',
     icon: Sun,
-    color: '#f1f2f0',
-    accent: '#596e72',
+    color: '#faf7f0',
+    accent: '#315f48',
   },
   {
     id: 'cyber',
-    name: 'Deep Slate',
-    category: 'Cool charcoal with restrained blue',
-    icon: Terminal,
-    color: '#0d1117',
-    accent: '#38bdf8',
+    name: 'Olive Night',
+    category: 'Deep olive with warm parchment text',
+    icon: Leaf,
+    color: '#202319',
+    accent: '#b6a56a',
   },
   {
     id: 'aurora',
-    name: 'Field Green',
-    category: 'Muted green for service operations',
+    name: 'Forest Canopy',
+    category: 'Deep green with soft botanical accents',
     icon: Sparkles,
-    color: '#061412',
-    accent: '#10b981',
+    color: '#13251d',
+    accent: '#80b394',
   },
   {
     id: 'system',
     name: 'System Default',
     category: 'Auto match device preference',
     icon: Palette,
-    color: '#15213a',
-    accent: '#a88bff',
+    color: '#faf7f0',
+    accent: '#b96548',
   },
 ];
 
