@@ -7,9 +7,11 @@ import { predictDelayRisk, predictResolution, forecastWorkload, MlServiceError }
 import { listQuerySchema, resolutionPredictionSchema, triagePipelineSchema } from '../validators/schemas.js';
 import { z } from 'zod';
 import { requireRole } from '../middleware/auth.js';
+import { normalizedRole } from '../models/User.js';
 import { TicketModel } from '../models/Ticket.js';
 import { UserModel } from '../models/User.js';
 import { calculateTicketSlaForRecord } from '../services/slaPolicy.js';
+import { customerPredictionFilter } from '../services/customerPredictions.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -197,8 +199,9 @@ router.post('/triage', requireRole('admin'), asyncHandler(async (req, res) => {
 router.get('/', asyncHandler(async (req, res) => {
   requireDatabase();
   const query = listQuerySchema.parse(req.query);
-  const filter: Record<string, unknown> = { userId: req.user!._id };
-  if (query.modelId) filter.modelId = query.modelId;
+  const customer = normalizedRole(req.user!) === 'customer';
+  const filter: Record<string, unknown> = customer ? customerPredictionFilter(req.user!._id) : { userId: req.user!._id };
+  if (query.modelId && (!customer || query.modelId === 'resolution-time')) filter.modelId = query.modelId;
   if (query.from || query.to) filter.createdAt = { ...(query.from ? { $gte: new Date(query.from) } : {}), ...(query.to ? { $lte: new Date(query.to) } : {}) };
   const [items, total] = await Promise.all([
     PredictionModel.find(filter).sort({ createdAt: -1 }).skip((query.page - 1) * query.pageSize).limit(query.pageSize).lean(),
@@ -209,7 +212,10 @@ router.get('/', asyncHandler(async (req, res) => {
 
 router.get('/:id', asyncHandler(async (req, res) => {
   requireDatabase();
-  const prediction = await PredictionModel.findOne({ _id: req.params.id, userId: req.user!._id }).lean();
+  const filter = normalizedRole(req.user!) === 'customer'
+    ? { _id: req.params.id, ...customerPredictionFilter(req.user!._id) }
+    : { _id: req.params.id, userId: req.user!._id };
+  const prediction = await PredictionModel.findOne(filter).lean();
   if (!prediction) throw new HttpError(404, 'Prediction not found.', 'PREDICTION_NOT_FOUND');
   res.json({ success: true, data: { prediction: serialize(prediction) } });
 }));

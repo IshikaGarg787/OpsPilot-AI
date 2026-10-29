@@ -47,6 +47,17 @@ export const ticketCreateSchema = z.object({
   priority: z.string().trim().min(1).max(100),
   project: z.string().trim().min(1).max(200),
 });
+export const customerTicketCreateSchema = z.object({
+  subject: z.string().trim().min(4).max(200),
+  description: z.string().trim().min(8).max(5000),
+  category: z.literal('Assistance'),
+}).strict();
+export const customerTicketListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).max(10000).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(10),
+  search: z.string().trim().max(200).optional(),
+  status: z.enum(['open', 'triaged', 'assigned', 'in_progress', 'waiting_customer', 'resolved', 'closed']).optional(),
+});
 export const ticketResponseSchema = z.object({
   message: z.string().trim().min(1).max(5000),
   visibility: z.enum(['public', 'internal']).optional().default('public'),

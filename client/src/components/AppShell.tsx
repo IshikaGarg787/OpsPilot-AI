@@ -25,6 +25,12 @@ const teamNavItems = [
   { to: '/app/history', label: 'My AI estimates', icon: History },
   { to: '/app/settings', label: 'Settings', icon: Settings },
 ];
+const customerNavItems = [
+  { to: '/app', label: 'Overview', icon: LayoutDashboard, end: true },
+  { to: '/app/tickets', label: 'My tickets', icon: Ticket },
+  { to: '/app/tickets/new', label: 'Raise a ticket', icon: Plus },
+  { to: '/app/settings', label: 'Settings', icon: Settings },
+];
 
 const pageNames: Record<string, string> = { '/app': 'Overview', '/app/tickets': 'Tickets', '/app/tickets/new': 'Raise a ticket', '/app/predictions': 'AI Predictions', '/app/triage': 'AI Decision Flow', '/app/resolution-time': 'Resolution Time', '/app/models': 'Model Center', '/app/history': 'Prediction History', '/app/analytics': 'Analytics', '/app/settings': 'Settings', '/app/operational-risk': 'Operational Risk', '/app/workload-forecasting': 'Workload Forecasting', '/app/capacity-plans': 'Capacity Scenarios', '/app/users': 'Users & Roles' };
 
@@ -35,7 +41,7 @@ export function AppShell() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const pageName = pageNames[location.pathname] ?? 'Workspace';
-  const navItems = user?.role === 'admin' ? adminNavItems : teamNavItems;
+  const navItems = user?.role === 'admin' ? adminNavItems : user?.role === 'customer' ? customerNavItems : teamNavItems;
   const initials = user?.name.split(' ').map((name) => name[0]).slice(0, 2).join('').toUpperCase() ?? 'OP';
 
   async function handleLogout() { await logout(); navigate('/login'); }
