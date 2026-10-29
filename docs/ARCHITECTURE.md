@@ -20,7 +20,7 @@ sequenceDiagram
   API-->>UI: Prediction record and result
 ```
 
-The standalone workload upload uses the authenticated Express API: the browser posts CSV-derived daily records to `POST /api/v1/predictions/workload`, which validates the request and forwards it to FastAPI `/forecast/workload`. Forecast results are returned to the page and are not persisted in MongoDB. The page checks `GET /api/v1/predictions/workload/health` before enabling the forecast action. Both the Triage and standalone pages use the same client history reducer, so ticket-level uploads retain only `Ticket`, `Service`, and `HD Service` issue types before aggregation.
+The Admin workload page first offers actual customer ticket counts already recorded in OpsPilot through `GET /api/v1/predictions/workload/history`. If the workspace has fewer than 120 days, an Admin can download a dated daily-count template or export the actual app history, fill/import records from the company help desk, and upload them. The authenticated Express API validates and forwards daily records to FastAPI `/forecast/workload`; successful standalone forecasts are saved in prediction history. Integrated triage uses the same internal history when available or CSV-derived records otherwise, and saves the decision packet plus linked ticket outlook. Ticket-level uploads retain only `Ticket`, `Service`, and `HD Service` issue types before aggregation.
 
 ## Boundaries
 

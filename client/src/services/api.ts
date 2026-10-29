@@ -1,4 +1,4 @@
-import type { CustomerDashboardData, CustomerTicketPage, DashboardActivity, DashboardSummary, ModelInfo, ModelMetadata, PaginatedPredictions, Prediction, ThemePreference, Ticket, TicketStatus, TriageResult, User, WorkloadForecastHealth, WorkloadForecastResult } from '../types';
+import type { CustomerDashboardData, CustomerTicketPage, DashboardActivity, DashboardSummary, ModelInfo, ModelMetadata, PaginatedPredictions, Prediction, SlaEvent, SlaOverview, SlaPolicy, ThemePreference, Ticket, TicketStatus, TriageResult, User, WorkloadForecastHealth, WorkloadForecastResult } from '../types';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000/api/v1').replace(/\/$/, '');
 
@@ -42,9 +42,10 @@ export const api = {
   },
   predictions: {
     createResolution: (payload: { issue_created: string; issue_priority: string; issue_type: string; issue_proj: string }) => request<{ prediction: Prediction; duration: number; unit: string; predictionType: string; modelId: string; modelVersion?: string }>('/predictions/resolution-time', { method: 'POST', body: JSON.stringify(payload) }),
-    createTriage: (payload: { complaint: string; issue_created: string; issue_priority: string; issue_type: string; issue_proj: string; horizon: 7 | 14; workload_records: { date: string; ticket_count: number }[]; ticketId?: string }) => request<TriageResult>('/predictions/triage', { method: 'POST', body: JSON.stringify(payload) }),
+    createTriage: (payload: { complaint: string; issue_created: string; issue_priority: string; issue_type: string; issue_proj: string; horizon: 7 | 14; workload_source: 'workspace_ticket_history' | 'uploaded_csv'; workload_records: { date: string; ticket_count: number }[]; ticketId?: string }) => request<TriageResult>('/predictions/triage', { method: 'POST', body: JSON.stringify(payload) }),
     workloadHealth: () => request<WorkloadForecastHealth>('/predictions/workload/health'),
-    forecastWorkload: (payload: { records: Array<{ date: string; ticket_count: number }>; horizon: 7 | 14 }) => request<WorkloadForecastResult>('/predictions/workload', { method: 'POST', body: JSON.stringify(payload) }),
+    workloadHistory: () => request<{ records: Array<{ date: string; ticket_count: number }>; historyDays: number; ticketTotal: number; enoughHistory: boolean; firstTicketDate: string | null; lastCompleteDate: string | null; templateStart: string; templateEnd: string }>('/predictions/workload/history'),
+    forecastWorkload: (payload: { records: Array<{ date: string; ticket_count: number }>; horizon: 7 | 14; source?: 'workspace_ticket_history' | 'uploaded_csv' }) => request<WorkloadForecastResult>('/predictions/workload', { method: 'POST', body: JSON.stringify(payload) }),
     list: (page = 1, pageSize = 20, modelId?: string) => request<PaginatedPredictions>(`/predictions?page=${page}&pageSize=${pageSize}${modelId ? `&modelId=${encodeURIComponent(modelId)}` : ''}`),
     detail: (id: string) => request<{ prediction: Prediction }>(`/predictions/${id}`),
     remove: (id: string) => request<null>(`/predictions/${id}`, { method: 'DELETE' }),
@@ -88,5 +89,12 @@ export const api = {
   capacityPlans: {
     list: () => request<{ plans: Array<{ _id: string; horizon: 7 | 14; expectedDemand: number; baselineCapacityPerDay: number; proposedCapacityPerDay: number; baselineUncovered: number; proposedUncovered: number; coverageImprovement: number; baselinePeakBacklog: number; proposedPeakBacklog: number; baselineBacklogAtHorizon: number; proposedBacklogAtHorizon: number; baselineClearanceDays: number | null; proposedClearanceDays: number | null; baselineOverloadedDays: number; proposedOverloadedDays: number; note: string; createdAt: string }> }>('/capacity-plans'),
     create: (payload: { ticketId: string; horizon: 7 | 14; baselineCapacityPerDay: number; proposedCapacityPerDay: number; note: string }) => request<{ plan: { expectedDemand: number; baselineCoverage: number; proposedCoverage: number; baselineUncovered: number; proposedUncovered: number; coverageImprovement: number; baselinePeakBacklog: number; proposedPeakBacklog: number; baselineBacklogAtHorizon: number; proposedBacklogAtHorizon: number; baselineClearanceDays: number | null; proposedClearanceDays: number | null; baselineOverloadedDays: number; proposedOverloadedDays: number } }>('/capacity-plans', { method: 'POST', body: JSON.stringify(payload) }),
+  },
+  sla: {
+    policies: () => request<{ policies: SlaPolicy[] }>('/sla/policies'),
+    createPolicy: (payload: Omit<SlaPolicy, '_id' | 'createdAt' | 'updatedAt'>) => request<{ policy: SlaPolicy }>('/sla/policies', { method: 'POST', body: JSON.stringify(payload) }),
+    updatePolicy: (id: string, payload: Partial<Omit<SlaPolicy, '_id' | 'createdAt' | 'updatedAt'>>) => request<{ policy: SlaPolicy }>(`/sla/policies/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+    overview: () => request<SlaOverview>('/sla/overview'),
+    events: () => request<{ events: SlaEvent[] }>('/sla/events'),
   },
 };

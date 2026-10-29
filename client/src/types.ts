@@ -42,15 +42,16 @@ export interface Prediction {
   modelId: string;
   modelVersion?: string;
   predictionType: string;
-  input: { issueCreated: string; priority: string; issueType: string; project: string; complaint?: string };
+  input: { issueCreated: string; priority: string; issueType: string; project: string; complaint?: string; ticketId?: string };
   output?: {
     duration?: number;
     unit?: string;
-    delayRisk?: { probability: number; category: 'low' | 'medium' | 'high'; flaggedForReview: boolean; decisionThreshold: number; targetThresholdHours: number; modelVersion?: string };
-    workload?: { historyStart: string; historyEnd: string; historyDays: number; horizon: 7 | 14; ticketTotal: number; expectedTickets: number; highLoadDays: number; forecast: Array<{ date: string; forecast: number; planningLow: number; planningHigh: number; highLoad: boolean }> };
+    delayRisk?: { probability: number; category: 'low' | 'medium' | 'high'; flaggedForReview: boolean; decisionThreshold: number; targetThresholdHours: number; modelVersion?: string; explanation?: { summary?: string; historicalEvidence?: Array<{ factor: string; value: string; historicalTickets: number; historicalDelayRate: number }>; evidenceCutoff?: string; interpretation?: string } };
+    workload?: { historyStart: string; historyEnd: string; historyDays: number; horizon: 7 | 14; ticketTotal: number; expectedTickets: number; highLoadDays: number; source?: 'workspace_ticket_history' | 'uploaded_csv' | 'triage'; forecast: Array<{ date: string; forecast: number; planningLow: number; planningHigh: number; highLoad: boolean }> };
   };
   status: 'success' | 'failed';
   errorCode?: string;
+  linkedTicket?: { id: string; ticketNumber?: string } | null;
   createdAt: string;
 }
 
@@ -77,6 +78,8 @@ export interface WorkloadForecastResult {
   forecast: WorkloadForecastRow[];
   recent_history: Array<{ date: string; ticket_count: number }>;
   notes: string[];
+  prediction_id?: string;
+  source?: 'workspace_ticket_history' | 'uploaded_csv';
 }
 
 export interface WorkloadForecastHealth {
@@ -92,7 +95,7 @@ export interface TriageResult {
   prediction: Prediction;
   risk: { risk_probability: number; risk_category: 'low' | 'medium' | 'high'; flagged_for_review: boolean; decision_threshold: number; target_threshold_hours: number; model_version: string; notes?: string[]; explanation?: { summary: string; historical_evidence: Array<{ factor: string; value: string; historical_tickets: number; historical_delay_rate: number }>; evidence_cutoff: string; interpretation: string } };
   resolution: { duration: number; unit: 'hours'; prediction_type: 'point_estimate'; model_version?: string; artifact_generated_at?: string };
-  workload: { model_id: string; history_start: string; history_end: string; history_days: number; ticket_total: number; horizon: 7 | 14; forecast: Array<{ date: string; weekday: string; forecast: number; planning_low: number; planning_high: number; high_load_threshold: number; high_load_flag: boolean }> };
+  workload: { model_id: string; history_start: string; history_end: string; history_days: number; ticket_total: number; horizon: 7 | 14; source?: 'workspace_ticket_history' | 'uploaded_csv' | 'triage'; forecast: Array<{ date: string; weekday: string; forecast: number; planning_low: number; planning_high: number; high_load_threshold: number; high_load_flag: boolean }> };
   recommendation: { recommendedPriority: string; assignee: { id: string; name: string; activeTickets: number } | null };
   sla: TicketSla | null;
 }
@@ -100,6 +103,9 @@ export interface TriageResult {
 export interface TicketSlaCalculation { status: 'not_applicable' | 'on_track' | 'at_risk' | 'breached' | 'met'; deadlineAt: string | null; remainingHours: number | null; elapsedHours: number | null; clockPaused: boolean; timeBasis: 'calendar_hours' | 'business_hours' }
 export interface TicketSla { policy: { policyId: string; version: string }; response: TicketSlaCalculation; resolution: TicketSlaCalculation }
 export interface CapacityPlan { _id: string; horizon: 7 | 14; expectedDemand: number; baselineCapacityPerDay: number; proposedCapacityPerDay: number; baselineUncovered: number; proposedUncovered: number; coverageImprovement: number; baselinePeakBacklog: number; proposedPeakBacklog: number; baselineBacklogAtHorizon: number; proposedBacklogAtHorizon: number; baselineClearanceDays: number | null; proposedClearanceDays: number | null; baselineOverloadedDays: number; proposedOverloadedDays: number; note: string; createdAt: string }
+export interface SlaPolicy { _id: string; name: string; priority: string; firstResponseMinutes: number; resolutionMinutes: number; enabled: boolean; createdAt: string; updatedAt: string }
+export interface SlaEvent { _id: string; kind: string; ticketNumber?: string | null; slaType?: string | null; threshold?: number | null; message: string; createdAt: string }
+export interface SlaOverview { metrics: { compliancePercent: number | null; approaching: number; breached: number; met: number; averageFirstResponseHours: number | null; averageResolutionHours: number | null }; tickets: Array<{ _id: string; ticketNumber: string; subject: string; priority: string; status: TicketStatus; assignedTo?: { name: string } | null; aiSignals?: { delayRiskCategory?: 'low' | 'medium' | 'high'; delayRiskProbability?: number }; slaSnapshot?: { policyName?: string; firstResponseDeadlineAt?: string; resolutionDeadlineAt?: string; firstResponseStatus?: string; resolutionStatus?: string } }>; events: SlaEvent[] }
 
 export type TicketStatus = 'open' | 'triaged' | 'assigned' | 'in_progress' | 'waiting_customer' | 'resolved' | 'closed';
 export interface Ticket {
@@ -149,6 +155,8 @@ export interface CustomerTicketPage {
 export interface DashboardSummary {
   totalPredictions: number;
   resolutionPredictions: number;
+  delayRiskPredictions: number;
+  workloadForecasts: number;
   averageResolutionHours: number | null;
   availableModels: number;
   models: ModelInfo[];

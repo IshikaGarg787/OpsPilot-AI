@@ -72,6 +72,14 @@ export function ModelCenterPage() {
         ))}
       </div>
 
+      <Card title="How each model helps the team">
+        <div className="model-summary-list">
+          <div className="model-summary-row"><span className="model-symbol"><Sparkles size={17} /></span><div><strong>Delay risk → review early</strong><small>Flags tickets that resemble cases resolved after the model’s 30-day historical target. A flag prompts human review; it is not an SLA breach.</small></div></div>
+          <div className="model-summary-row"><span className="model-symbol"><Clock3 size={17} /></span><div><strong>Resolution estimate → plan and compare</strong><small>Estimates elapsed resolution hours from ticket context. Compare the estimate with the separate SLA deadline; it is a point estimate, not a guarantee.</small></div></div>
+          <div className="model-summary-row"><span className="model-symbol"><Gauge size={17} /></span><div><strong>Workload forecast → prepare coverage</strong><small>Projects incoming ticket volume over 7 or 14 days from ticket history. Use higher-volume days to review team coverage.</small></div></div>
+        </div>
+      </Card>
+
       {resolution && (
         <div className="evaluation-layout">
           <Card title="Resolution model evaluation" action={<span className="historical-label"><CheckCircle2 size={14} /> Historical artifact metrics</span>}>

@@ -1,4 +1,4 @@
-import { Activity, BarChart3, ChevronDown, Clock3, Gauge, History, LayoutDashboard, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings, Ticket, UserRoundCog, Plus, X } from 'lucide-react';
+import { Activity, BarChart3, BrainCircuit, ChevronDown, Clock3, Gauge, History, LayoutDashboard, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings, Ticket, UserRoundCog, Plus, X, ShieldCheck } from 'lucide-react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { Logo } from './Logo';
@@ -9,11 +9,13 @@ import { TypewriterText } from './TypewriterText';
 const adminNavItems = [
   { to: '/app', label: 'Overview', icon: LayoutDashboard, end: true },
   { to: '/app/tickets', label: 'Ticket Queue', icon: Ticket },
+  { to: '/app/triage', label: 'AI Decision Flow', icon: BrainCircuit },
   { to: '/app/models', label: 'Model Center', icon: Gauge },
   { to: '/app/history', label: 'Prediction History', icon: History },
   { to: '/app/analytics', label: 'Analytics', icon: BarChart3 },
   { to: '/app/workload-forecasting', label: 'Workload Forecasting', icon: Gauge },
   { to: '/app/capacity-plans', label: 'Capacity Scenarios', icon: Activity },
+  { to: '/app/sla', label: 'SLA Management', icon: ShieldCheck },
   { to: '/app/users', label: 'Users & Roles', icon: UserRoundCog },
   { to: '/app/settings', label: 'Settings', icon: Settings },
 ];
@@ -46,6 +48,7 @@ const pageNames: Record<string, string> = {
   '/app/workload-forecasting': 'Workload Forecasting',
   '/app/capacity-plans': 'Capacity Scenarios',
   '/app/users': 'Users & Roles',
+  '/app/sla': 'SLA Management',
 };
 
 export function AppShell() {

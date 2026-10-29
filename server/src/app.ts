@@ -13,6 +13,7 @@ import healthRoutes from './routes/healthRoutes.js';
 import ticketRoutes from './routes/ticketRoutes.js';
 import capacityRoutes from './routes/capacityRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import slaRoutes from './routes/slaRoutes.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 const app = express();
@@ -41,6 +42,7 @@ app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/tickets', ticketRoutes);
 app.use('/api/v1/capacity-plans', capacityRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/sla', slaRoutes);
 app.use(notFound);
 app.use(errorHandler);
 

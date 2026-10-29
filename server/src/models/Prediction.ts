@@ -24,6 +24,12 @@ const predictionSchema = new mongoose.Schema(
         decisionThreshold: { type: Number, min: 0, max: 1 },
         targetThresholdHours: { type: Number, min: 0 },
         modelVersion: { type: String },
+        explanation: {
+          summary: String,
+          historicalEvidence: [{ _id: false, factor: String, value: String, historicalTickets: Number, historicalDelayRate: Number }],
+          evidenceCutoff: String,
+          interpretation: String,
+        },
       },
       workload: {
         historyStart: { type: String },
@@ -34,6 +40,7 @@ const predictionSchema = new mongoose.Schema(
         expectedTickets: { type: Number, min: 0 },
         highLoadDays: { type: Number, min: 0 },
         modelVersion: { type: String },
+        source: { type: String, enum: ['workspace_ticket_history', 'uploaded_csv', 'triage'] },
         forecast: [{
           _id: false,
           date: { type: String, required: true },
