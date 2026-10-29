@@ -1,4 +1,4 @@
-import { ArrowRight, Bell, BrainCircuit, Clock3, Gauge, History, Plus, ShieldAlert, Sparkles, Ticket as TicketIcon } from 'lucide-react';
+import { ArrowRight, Bell, BrainCircuit, CheckCircle2, Clock3, Gauge, History, Plus, ShieldAlert, Sparkles, Ticket as TicketIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -54,7 +54,24 @@ function OperationsDashboard() {
 
 export function DashboardPage() {
   const { user } = useAuth();
-  return user?.role === 'customer' ? <CustomerDashboardPage /> : <OperationalDashboardPage />;
+  return user?.role === 'customer' ? <CustomerDashboardPage /> : user?.role === 'it_team' ? <ItTeamDashboardPage /> : <OperationalDashboardPage />;
+}
+
+function ItTeamDashboardPage() {
+  const { user } = useAuth();
+  const [tickets, setTickets] = useState<Ticket[] | null>(null);
+  const [error, setError] = useState('');
+  useEffect(() => { api.tickets.list().then(({ tickets: rows }) => setTickets(rows)).catch((err) => setError(err instanceof Error ? err.message : 'Your work overview is unavailable.')); }, []);
+  const assigned = tickets?.filter((ticket) => ticket.assignedTo?.id === user?.id) ?? [];
+  const active = assigned.filter((ticket) => !['resolved', 'closed'].includes(ticket.status));
+  const waiting = assigned.filter((ticket) => ticket.status === 'waiting_customer');
+  const resolved = assigned.filter((ticket) => ['resolved', 'closed'].includes(ticket.status));
+  return <div className="page-stack"><PageIntro eyebrow="IT team workspace" title="My work overview" description="A focused view of your assignments, submitted issues, and next steps." action={<Link className="button button-primary" to="/app/tickets"><TicketIcon size={16} /> Open my tickets</Link>} />
+    {error && <ErrorState message={error} onRetry={() => window.location.reload()} />}
+    {!tickets && !error && <LoadingState label="Loading your assignments" />}
+    {tickets && <><div className="metrics-grid"><MetricCard label="Assigned to me" value={number.format(assigned.length)} detail="Tickets in your queue" icon={TicketIcon} accent="blue" /><MetricCard label="In progress" value={number.format(active.filter((ticket) => ticket.status === 'in_progress').length)} detail="Active work" icon={Gauge} accent="violet" /><MetricCard label="Waiting on customer" value={number.format(waiting.length)} detail="Next step needs a reply" icon={Clock3} accent="amber" /><MetricCard label="Completed" value={number.format(resolved.length)} detail="Resolved or closed" icon={CheckCircle2} accent="teal" /></div><MyAssignedWork /></>}
+    <Card title="Team resources"><div className="role-resource-links"><Link to="/app/tickets/new"><Plus size={16} /> Report an internal issue <ArrowRight size={15} /></Link><Link to="/app/history"><History size={16} /> Review my AI estimates <ArrowRight size={15} /></Link></div></Card>
+  </div>;
 }
 
 function OperationalDashboardPage() {

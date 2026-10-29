@@ -1,5 +1,5 @@
 import { AlertCircle, ArrowUpRight, CheckCircle2, ChevronRight, LoaderCircle, Sparkles } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { ModelStatus } from '../types';
 
 export function Button({ children, variant = 'primary', type = 'button', className = '', disabled = false, onClick }: { children: ReactNode; variant?: 'primary' | 'secondary' | 'ghost' | 'danger'; type?: 'button' | 'submit' | 'reset'; className?: string; disabled?: boolean; onClick?: () => void }) {
@@ -11,7 +11,18 @@ export function ButtonLink({ children, to, variant = 'primary', className = '' }
 }
 
 export function PageIntro({ eyebrow, title, description, action }: { eyebrow?: string; title: string; description?: string; action?: ReactNode }) {
-  return <div className="page-intro"><div>{eyebrow && <p className="eyebrow">{eyebrow}</p>}<h1>{title}</h1>{description && <p className="page-description">{description}</p>}</div>{action}</div>;
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || !('IntersectionObserver' in window)) { setVisible(true); return; }
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) { setVisible(true); observer.disconnect(); }
+    }, { threshold: 0.08 });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  return <div ref={ref} className={`page-intro ${visible ? 'reveal-visible' : 'reveal-pending'}`}><div>{eyebrow && <p className="eyebrow">{eyebrow}</p>}<h1>{title}</h1>{description && <p className="page-description">{description}</p>}</div>{action}</div>;
 }
 
 export function MetricCard({ label, value, detail, icon: Icon, accent = 'blue' }: { label: string; value: string; detail?: string; icon: typeof Sparkles; accent?: 'blue' | 'teal' | 'violet' | 'amber' }) {
@@ -24,7 +35,16 @@ export function StatusPill({ status }: { status: ModelStatus | 'success' | 'fail
 }
 
 export function Card({ children, className = '', title, action }: { children: ReactNode; className?: string; title?: string; action?: ReactNode }) {
-  return <section className={`card ${className}`}>{(title || action) && <div className="card-heading">{title && <h2>{title}</h2>}{action}</div>}{children}</section>;
+  const ref = useRef<HTMLElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || !('IntersectionObserver' in window)) { setVisible(true); return; }
+    const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { setVisible(true); observer.disconnect(); } }, { threshold: 0.04 });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  return <section ref={ref} className={`card ${className} ${visible ? 'reveal-visible' : 'reveal-pending'}`}>{(title || action) && <div className="card-heading">{title && <h2>{title}</h2>}{action}</div>}{children}</section>;
 }
 
 export function LoadingState({ label = 'Loading workspace' }: { label?: string }) {

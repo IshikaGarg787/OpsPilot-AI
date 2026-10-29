@@ -1,4 +1,4 @@
-export type ThemePreference = 'light' | 'dark' | 'system';
+export type ThemePreference = 'light' | 'dark' | 'system' | 'cyber' | 'aurora';
 export type AppRole = 'customer' | 'it_team' | 'admin';
 
 export interface User {
@@ -115,7 +115,7 @@ export interface Ticket {
   estimatedResolutionAt?: string | null; delayExplanation?: string;
   sla?: TicketSla | null;
   workloadOutlook?: { historyStart?: string; historyEnd?: string; historyDays?: number; horizon?: 7 | 14; expectedTickets?: number; highLoadDays?: number; modelVersion?: string; generatedAt?: string; forecast?: Array<{ date: string; forecast: number; planningLow?: number; planningHigh?: number; highLoad?: boolean }> };
-  aiSignals?: { delayRiskProbability?: number; delayRiskCategory?: 'low' | 'medium' | 'high'; flaggedForReview?: boolean; reviewThreshold?: number; targetThresholdHours?: number; resolutionHours?: number; riskModelVersion?: string; resolutionModelVersion?: string; unavailableReason?: string; riskExplanation?: { summary?: string; historicalEvidence?: Array<{ factor: string; value: string; historicalTickets: number; historicalDelayRate: number }>; interpretation?: string }; recommendedAssignee?: { id: string; name: string; activeTickets: number }; recommendedPriority?: string };
+  aiSignals?: { delayRiskProbability?: number; delayRiskCategory?: 'low' | 'medium' | 'high'; flaggedForReview?: boolean; reviewThreshold?: number; targetThresholdHours?: number; resolutionHours?: number; riskModelVersion?: string; resolutionModelVersion?: string; unavailableReason?: string; riskExplanation?: { summary?: string; historicalEvidence?: Array<{ factor: string; value: string; historicalTickets?: number; historical_tickets?: number; historicalDelayRate?: number; historical_delay_rate?: number }>; interpretation?: string }; recommendedAssignee?: { id: string; name: string; activeTickets: number }; recommendedPriority?: string };
   recommendation?: { action?: 'priority_review' | 'standard_queue'; state?: 'pending' | 'approved' | 'rejected' | 'modified'; rationale?: string; decisionNote?: string };
   responses: Array<{ _id: string; authorName: string; authorRole: AppRole; visibility: 'public' | 'internal'; message: string; resolutionNote?: string; createdAt: string }>;
   audit?: Array<{ _id: string; actorName: string; actorRole: AppRole; action: string; details?: string; createdAt: string }>;

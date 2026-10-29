@@ -1,17 +1,26 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { ThemePreference } from '../types';
 
-type ThemeContextValue = { theme: ThemePreference; resolvedTheme: 'light' | 'dark'; setTheme: (theme: ThemePreference) => void };
+export type ResolvedTheme = 'dark' | 'light' | 'cyber' | 'aurora';
+
+type ThemeContextValue = {
+  theme: ThemePreference;
+  resolvedTheme: ResolvedTheme;
+  setTheme: (theme: ThemePreference) => void;
+};
+
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-function resolveTheme(theme: ThemePreference) {
-  if (theme !== 'system') return theme;
-  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+function resolveTheme(theme: ThemePreference): ResolvedTheme {
+  if (theme === 'system') {
+    return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  }
+  return (theme as ResolvedTheme) || 'dark';
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemePreference>(() => (localStorage.getItem('opspilot-theme') as ThemePreference | null) ?? 'dark');
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() => resolveTheme(theme));
+  const [theme, setThemeState] = useState<ThemePreference>(() => (localStorage.getItem('opspilot-theme') as ThemePreference | null) ?? 'light');
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => resolveTheme(theme));
 
   useEffect(() => {
     const resolved = resolveTheme(theme);
