@@ -1,0 +1,90 @@
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useLocation } from 'react-router-dom';
+import { AlertTriangle, ArrowRight, BarChart3, CheckCircle2, Clock3, FileUp, ShieldAlert, Sparkles } from 'lucide-react';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Card, ErrorState, LoadingState, Notice, PageIntro } from '../components/ui';
+import { api, ApiError } from '../services/api';
+import type { ModelMetadata, TriageResult } from '../types';
+
+function localDateTime() { const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); return now.toISOString().slice(0, 16); }
+
+function parseCsv(text: string): Record<string, string>[] {
+  const rows: string[][] = []; let row: string[] = []; let cell = ''; let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '"' && quoted && text[i + 1] === '"') { cell += '"'; i++; }
+    else if (ch === '"') quoted = !quoted;
+    else if (ch === ',' && !quoted) { row.push(cell.trim()); cell = ''; }
+    else if ((ch === '\n' || ch === '\r') && !quoted) { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(cell.trim()); if (row.some(Boolean)) rows.push(row); row = []; cell = ''; }
+    else cell += ch;
+  }
+  row.push(cell.trim()); if (row.some(Boolean)) rows.push(row);
+  if (rows.length < 2) throw new Error('Choose a CSV with a header and ticket history.');
+  const headers = rows[0].map((h) => h.replace(/^\uFEFF/, '').trim());
+  return rows.slice(1).map((values) => Object.fromEntries(headers.map((header, i) => [header, values[i] ?? ''])));
+}
+
+function aggregateHistory(rows: Record<string, string>[]) {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    if (row.date !== undefined && row.ticket_count !== undefined) {
+      const day = row.date.trim().slice(0, 10); const count = Number(row.ticket_count);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isInteger(count) || count < 0) throw new Error('Daily CSV rows need valid date and whole, non-negative ticket_count values.');
+      counts.set(day, (counts.get(day) ?? 0) + count);
+    } else if (row.issue_created) {
+      const time = Date.parse(row.issue_created);
+      if (!Number.isFinite(time)) throw new Error('Every ticket row must have a valid issue_created timestamp.');
+      const day = new Date(time).toISOString().slice(0, 10); counts.set(day, (counts.get(day) ?? 0) + 1);
+    } else throw new Error('CSV needs issue_created, or date and ticket_count columns.');
+  }
+  return [...counts].sort(([a], [b]) => a.localeCompare(b)).map(([date, ticket_count]) => ({ date, ticket_count }));
+}
+
+export function TriagePage() {
+  const location = useLocation();
+  const linkedTicket = (location.state as { ticket?: import('../types').Ticket } | null)?.ticket;
+  const [metadata, setMetadata] = useState<ModelMetadata | null>(null); const [loadingMetadata, setLoadingMetadata] = useState(true); const [metadataError, setMetadataError] = useState('');
+  const [created, setCreated] = useState(localDateTime()); const [priority, setPriority] = useState(''); const [issueType, setIssueType] = useState(''); const [project, setProject] = useState('');
+  const [complaint, setComplaint] = useState(''); const [file, setFile] = useState<File | null>(null); const [horizon, setHorizon] = useState<7 | 14>(7);
+  const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [result, setResult] = useState<TriageResult | null>(null);
+  const chartRows = useMemo(() => result?.workload.forecast.map((day) => ({ ...day, label: new Date(`${day.date}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) })) ?? [], [result]);
+
+  async function loadMetadata() {
+    setLoadingMetadata(true); setMetadataError('');
+    try { const next = await api.models.metadata(); setMetadata(next); setPriority(linkedTicket?.priority ?? next.fields.issue_priority?.options[0] ?? ''); setIssueType(linkedTicket?.category ?? next.fields.issue_type?.options[0] ?? ''); setProject(linkedTicket?.project ?? next.fields.issue_proj?.options[0] ?? ''); if (linkedTicket) { setComplaint(linkedTicket.description); const date = new Date(linkedTicket.createdAt); date.setMinutes(date.getMinutes() - date.getTimezoneOffset()); setCreated(date.toISOString().slice(0, 16)); } }
+    catch (err) { setMetadataError(err instanceof ApiError ? err.message : 'The verified ticket schema is unavailable.'); }
+    finally { setLoadingMetadata(false); }
+  }
+  useEffect(() => { void loadMetadata(); }, []);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault(); setError(''); setResult(null);
+    if (!file) { setError('Upload refreshed ticket history to complete the workload step.'); return; }
+    setBusy(true);
+    try {
+      const records = aggregateHistory(parseCsv(await file.text()));
+      if (records.length < 120 || (Date.parse(records.at(-1)!.date) - Date.parse(records[0].date)) / 86400000 < 119) throw new Error('The history must cover at least 120 days.');
+      const response = await api.predictions.createTriage({ complaint, issue_created: new Date(created).toISOString(), issue_priority: priority, issue_type: issueType, issue_proj: project, horizon, workload_records: records, ...(linkedTicket ? { ticketId: linkedTicket.id } : {}) });
+      setResult(response);
+    } catch (err) { setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'The decision pipeline could not be completed.'); }
+    finally { setBusy(false); }
+  }
+
+  if (loadingMetadata) return <><PageIntro eyebrow="Unified ticket decision" title="Ticket triage" description="Take a complaint through risk, resolution, and workload signals in one run." /><LoadingState label="Loading verified ticket fields" /></>;
+  if (!metadata || metadataError) return <><PageIntro eyebrow="Unified ticket decision" title="Ticket triage" description="Take a complaint through risk, resolution, and workload signals in one run." /><ErrorState message={metadataError || 'Ticket schema unavailable.'} onRetry={() => void loadMetadata()} /></>;
+
+  return <div className="page-stack triage-page">
+    <PageIntro eyebrow="One operational pipeline · three model signals" title="Ticket triage" description={linkedTicket ? `Refreshing the complete decision packet for ${linkedTicket.ticketNumber}.` : 'Capture a new complaint, assess its delay risk, estimate time to resolution, and view the incoming workload outlook.'} action={<span className="model-health"><span className="pulse-dot" /> Pipeline runs in sequence</span>} />
+    <div className="triage-flow" aria-label="Pipeline sequence"><span className="triage-flow-step active"><i>1</i> Delay risk</span><ArrowRight size={16} /><span className="triage-flow-step active"><i>2</i> Resolution time</span><ArrowRight size={16} /><span className="triage-flow-step active"><i>3</i> Workload outlook</span></div>
+    <Notice variant="warning"><strong>Model input transparency.</strong> Complaint text is saved with the decision for human review. The trained models score the verified creation timestamp, priority, issue type, project, and historical ticket patterns; the current dataset has no complaint-text feature.</Notice>
+    <form className="triage-form" onSubmit={submit}>
+      <Card title={linkedTicket ? `1 · ${linkedTicket.ticketNumber} ticket context` : '1 · Capture the complaint'} className="triage-intake-card"><label className="field"><span>Customer complaint <i>*</i></span><textarea value={complaint} onChange={(e) => setComplaint(e.target.value)} required minLength={8} maxLength={3000} rows={5} readOnly={Boolean(linkedTicket)} placeholder="Describe what the customer is experiencing, in their own words…" /><small className="field-help">Stored alongside the result as decision context. Do not include passwords or payment details.</small></label><div className="form-grid-two"><label className="field"><span>Priority <i>*</i></span><select value={priority} onChange={(e) => setPriority(e.target.value)} required disabled={Boolean(linkedTicket)}>{metadata.fields.issue_priority.options.map((value) => <option key={value}>{value}</option>)}</select></label><label className="field"><span>Issue type <i>*</i></span><select value={issueType} onChange={(e) => setIssueType(e.target.value)} required disabled={Boolean(linkedTicket)}>{metadata.fields.issue_type.options.map((value) => <option key={value}>{value}</option>)}</select></label></div><div className="form-grid-two"><label className="field"><span>Project <i>*</i></span><select value={project} onChange={(e) => setProject(e.target.value)} required disabled={Boolean(linkedTicket)}>{metadata.fields.issue_proj.options.map((value) => <option key={value}>{value}</option>)}</select></label><label className="field"><span>Ticket created <i>*</i></span><input type="datetime-local" value={created} onChange={(e) => setCreated(e.target.value)} required readOnly={Boolean(linkedTicket)} /></label></div></Card>
+      <Card title="2 · Add refreshed operations history" className="triage-history-card"><p className="card-subtitle">The workload model needs at least 120 days. Upload ticket-level <code>issue_created</code> data or daily <code>date,ticket_count</code> totals. The browser reduces ticket rows to daily counts before sending them to the API.</p><label className="file-picker"><FileUp size={16} /><span>{file?.name ?? 'Choose history CSV'}</span><input type="file" accept=".csv,text/csv" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setError(''); setResult(null); }} /></label><label className="field triage-horizon"><span>Forecast horizon</span><select value={horizon} onChange={(e) => setHorizon(Number(e.target.value) as 7 | 14)}><option value={7}>Next 7 days</option><option value={14}>Next 14 days</option></select></label>{error && <div className="inline-error" role="alert"><AlertTriangle size={16} />{error}</div>}<button className="button button-primary triage-submit" type="submit" disabled={busy || !file || !complaint.trim() || !priority || !issueType || !project}>{busy ? <><span className="button-spinner" /> Running risk → resolution → workload…</> : <><Sparkles size={16} /> Run full decision pipeline</>}</button><small className="field-help">A result is saved only after all three model steps succeed.</small></Card>
+    </form>
+    {result && <section className="triage-results" aria-live="polite"><div className="triage-result-heading"><div><span className="eyebrow">Decision packet · saved to history</span><h2>Signals for this ticket</h2></div><span className="status-pill"><CheckCircle2 size={14} /> Complete</span></div><div className="triage-result-grid">
+      <Card className="triage-result-card"><div className="triage-result-top"><ShieldAlert size={19} /><span>Delay risk</span><strong className={`risk-pill risk-${result.risk.risk_category}`}>{result.risk.risk_category} risk</strong></div><strong className="triage-result-number">{(result.risk.risk_probability * 100).toFixed(1)}<small>%</small></strong><p>{result.risk.flagged_for_review ? 'Flagged for review by the model’s high-recall decision threshold.' : 'Below the model’s high-recall review threshold.'}</p><small>Review threshold {(result.risk.decision_threshold * 100).toFixed(1)}% · target is over {result.risk.target_threshold_hours / 24} days</small></Card>
+      <Card className="triage-result-card"><div className="triage-result-top"><Clock3 size={19} /><span>Estimated resolution</span></div><strong className="triage-result-number">{result.resolution.duration.toFixed(1)}<small> h</small></strong><p>About {(result.resolution.duration / 24).toFixed(1)} days from ticket creation.</p><small>Experimental point estimate · not an SLA commitment</small></Card>
+      <Card className="triage-result-card"><div className="triage-result-top"><BarChart3 size={19} /><span>Incoming workload</span></div><strong className="triage-result-number">{result.workload.forecast.reduce((sum, day) => sum + day.forecast, 0).toFixed(0)}<small> tickets</small></strong><p>Expected across the next {result.workload.horizon} days; {result.workload.forecast.filter((day) => day.high_load_flag).length} high-load days.</p><small>History: {result.workload.history_days} days · {result.workload.history_start} to {result.workload.history_end}</small></Card>
+    </div><Card title="Recommended next actions" className="triage-chart-card"><p><strong>Priority:</strong> {result.recommendation.recommendedPriority}{result.recommendation.recommendedPriority !== priority ? ' · raise for review' : ' · keep current level'}</p><p><strong>Assignment:</strong> {result.recommendation.assignee ? `${result.recommendation.assignee.name} has the smallest active queue (${result.recommendation.assignee.activeTickets} tickets at scoring time).` : 'No IT Team accounts are available.'}</p><p className="field-help">Assignment is a workload-only suggestion; skills, availability, and fairness are not modeled. An administrator must confirm it.</p>{result.risk.explanation && <div className="recommendation-review"><span className="eyebrow">Evidence behind delay risk</span><p>{result.risk.explanation.summary}</p>{result.risk.explanation.historical_evidence.map((item) => <small key={item.factor}>{item.factor} · {item.value}: {(item.historical_delay_rate * 100).toFixed(1)}% delayed across {item.historical_tickets} earlier tickets.</small>)}<small>{result.risk.explanation.interpretation}</small></div>}{result.sla && <p><strong>Official SLA clocks:</strong> response {result.sla.response.status.replaceAll('_', ' ')} · resolution {result.sla.resolution.status.replaceAll('_', ' ')} · policy {result.sla.policy.version}.</p>}</Card><Card title="Workload outlook" className="triage-chart-card"><div className="forecast-chart"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartRows}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="label" tickLine={false} axisLine={false} /><YAxis allowDecimals={false} tickLine={false} axisLine={false} width={42} /><Tooltip formatter={(value) => [`${Number(value).toFixed(1)} tickets`, 'Forecast']} /><Bar dataKey="forecast" radius={[6, 6, 0, 0]} fill="#6478e8" /></BarChart></ResponsiveContainer></div><p className="field-help">Planning ranges are variability-based, not calibrated confidence intervals. Forecast is fitted to the uploaded history.</p></Card><Notice variant="warning"><strong>Human review required.</strong> The risk model predicts delay against a historical 30-day outcome; SLA targets are calculated separately. Resolution remains a point estimate and workload ranges are not guarantees.</Notice></section>}
+  </div>;
+}

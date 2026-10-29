@@ -1,0 +1,125 @@
+{
+  "target": {
+    "definition": "(issue_resolution_date - issue_created) in elapsed hours",
+    "unit": "hours",
+    "prediction_type": "point_estimate",
+    "included_rows": 65838,
+    "excluded_rows_by_reason": {
+      "included": 65838,
+      "unresolved_missing_resolution_timestamp": 853
+    },
+    "duration_quantiles_hours": {
+      "0.01": 0.03222222222222222,
+      "0.05": 1.0438888888888889,
+      "0.25": 124.32277777777777,
+      "0.5": 837.80784875,
+      "0.75": 36508.14905958333,
+      "0.9": 67592.33090313889,
+      "0.95": 76751.13390302777,
+      "0.99": 90928.99212493606
+    }
+  },
+  "splits": [
+    {
+      "split": "train",
+      "rows": 46086,
+      "first_created": "2007-04-15T08:12:11+00:00",
+      "last_created": "2019-10-13T08:06:49.871000+00:00",
+      "unique_tickets": 46086
+    },
+    {
+      "split": "validation",
+      "rows": 9875,
+      "first_created": "2019-10-13T08:07:39.501000+00:00",
+      "last_created": "2021-08-08T14:02:40+00:00",
+      "unique_tickets": 9875
+    },
+    {
+      "split": "test",
+      "rows": 9877,
+      "first_created": "2021-08-08T14:07:06+00:00",
+      "last_created": "2023-03-14T11:43:55+00:00",
+      "unique_tickets": 9877
+    }
+  ],
+  "validation_model_selection": {
+    "selected_model": "Tuned HistGradientBoostingRegressor",
+    "best_validation_row": {
+      "model": "Tuned HistGradientBoostingRegressor",
+      "validation_mae_hours": 1089.9781371958259,
+      "validation_rmse_hours": 2371.292771930727,
+      "validation_r2": -0.06893167644599085,
+      "fit_seconds": 120.46909130000859,
+      "tuned": true
+    },
+    "comparison": [
+      {
+        "model": "Tuned HistGradientBoostingRegressor",
+        "validation_mae_hours": 1089.9781371958259,
+        "validation_rmse_hours": 2371.292771930727,
+        "validation_r2": -0.06893167644599085,
+        "fit_seconds": 120.46909130000859,
+        "tuned": true
+      },
+      {
+        "model": "HistGradientBoostingRegressor",
+        "validation_mae_hours": 1174.8217204907976,
+        "validation_rmse_hours": 2513.7355691504135,
+        "validation_r2": -0.20120954040011796,
+        "fit_seconds": 13.865246799978195,
+        "tuned": false
+      },
+      {
+        "model": "RandomForestRegressor",
+        "validation_mae_hours": 3521.3513702855685,
+        "validation_rmse_hours": 4201.784116550593,
+        "validation_r2": -2.3561940419100758,
+        "fit_seconds": 10.168404199997894,
+        "tuned": false
+      },
+      {
+        "model": "MedianBaseline",
+        "validation_mae_hours": 4866.24445929647,
+        "validation_rmse_hours": 5024.808799283072,
+        "validation_r2": -3.7997506252720186,
+        "fit_seconds": 0.5652284999960102,
+        "tuned": false
+      },
+      {
+        "model": "Ridge",
+        "validation_mae_hours": 17948.960381379067,
+        "validation_rmse_hours": 19895.05111790417,
+        "validation_r2": -74.24362506991308,
+        "fit_seconds": 0.7267092999827582,
+        "tuned": false
+      }
+    ]
+  },
+  "tuning": {
+    "selected_tree_for_search": "HistGradientBoostingRegressor",
+    "n_iter": 8,
+    "cv": "TimeSeriesSplit(n_splits=3)",
+    "n_jobs": 2,
+    "runtime_seconds": 120.46909130000859,
+    "untuned_tree_validation_mae_hours": 1174.8217204907976,
+    "tuned_tree_validation_mae_hours": 1089.9781371958259,
+    "tuning_improvement_hours": 84.84358329497172
+  },
+  "final_test": {
+    "mae_hours": 692.2122519700815,
+    "rmse_hours": 1215.477947110974,
+    "r2": -0.0981746247308648,
+    "n_test": 9877,
+    "fit_seconds_train_validation": 13.638378400006332
+  },
+  "test_median_baseline": {
+    "mae_hours": 1371.163090968552,
+    "rmse_hours": 1547.9085451204483,
+    "r2": -0.781016046948799
+  },
+  "test_baseline_improvement_hours": 678.9508389984705,
+  "feature_counts": {
+    "raw_engineered": 9,
+    "after_preprocessing": 292
+  }
+}

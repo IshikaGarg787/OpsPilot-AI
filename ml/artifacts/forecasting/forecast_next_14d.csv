@@ -1,0 +1,15 @@
+date,forecast,lower_90,upper_90,weekday,high_load_threshold,high_load_flag,model
+2023-03-15,25.9,18.8,38.2,Wednesday,26.0,0,ensemble_prophet+xgb
+2023-03-16,23.0,15.9,35.3,Thursday,26.0,0,ensemble_prophet+xgb
+2023-03-17,3.0,0.6,7.5,Friday,26.0,0,ensemble_prophet+xgb
+2023-03-18,3.0,0.6,7.5,Saturday,26.0,0,ensemble_prophet+xgb
+2023-03-19,28.8,21.7,41.1,Sunday,26.0,1,ensemble_prophet+xgb
+2023-03-20,28.8,21.7,41.1,Monday,26.0,1,ensemble_prophet+xgb
+2023-03-21,26.2,19.1,38.5,Tuesday,26.0,1,ensemble_prophet+xgb
+2023-03-22,25.8,18.7,38.1,Wednesday,26.0,0,ensemble_prophet+xgb
+2023-03-23,25.0,17.9,37.3,Thursday,26.0,0,ensemble_prophet+xgb
+2023-03-24,2.9,0.5,7.4,Friday,26.0,0,ensemble_prophet+xgb
+2023-03-25,3.1,0.7,7.6,Saturday,26.0,0,ensemble_prophet+xgb
+2023-03-26,27.5,20.4,39.8,Sunday,26.0,1,ensemble_prophet+xgb
+2023-03-27,29.1,22.0,41.4,Monday,26.0,1,ensemble_prophet+xgb
+2023-03-28,26.8,19.7,39.1,Tuesday,26.0,1,ensemble_prophet+xgb

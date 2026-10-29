@@ -1,0 +1,5 @@
+model,MAE,RMSE,sMAPE_%,weekly_WAPE_%,n_days
+seasonal_moving_avg_4w,6.607,11.078,35.38,15.83,84
+seasonal_naive,8.167,14.108,43.34,22.6,84
+moving_avg_28,11.895,15.346,66.08,15.83,84
+moving_avg_7,12.371,15.956,67.76,22.6,84

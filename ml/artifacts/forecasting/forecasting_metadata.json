@@ -1,0 +1,19 @@
+{
+  "model_id": "workload-forecasting",
+  "display_name": "Workload / Operations Forecasting",
+  "model_type": "XGBRegressor",
+  "model_version": "workload-v1",
+  "training_cutoff_date": "2023-03-14",
+  "supported_horizons_days": [
+    7,
+    14,
+    30
+  ],
+  "default_horizon_days": 7,
+  "target_unit": "tickets/day",
+  "prediction_interval": "90%",
+  "surge_threshold_tickets": 28.0,
+  "cv_mae": 4.19,
+  "test_mae": 6.08,
+  "test_weekly_wape_percent": 18.24
+}

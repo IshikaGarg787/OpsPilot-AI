@@ -1,0 +1,10 @@
+feature,source,availability,type,leakage_decision
+issue_priority,issues.csv,ticket creation,categorical,approved
+issue_type,issues.csv,ticket creation,categorical,approved
+issue_proj,issues.csv,ticket creation,categorical,approved
+created_year,issue_created,ticket creation,numeric calendar,approved
+created_month,issue_created,ticket creation,numeric calendar,approved
+created_dayofweek,issue_created,ticket creation,numeric calendar,approved
+created_hour,issue_created,ticket creation,numeric calendar,approved
+created_dayofmonth,issue_created,ticket creation,numeric calendar,approved
+created_is_weekend,issue_created,ticket creation,numeric calendar,approved

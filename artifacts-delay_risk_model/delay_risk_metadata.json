@@ -1,0 +1,356 @@
+{
+  "model_version": "delay-risk-v3",
+  "training_date_utc": "2026-10-28T13:39:13+00:00",
+  "target": "delayed = 1 if resolution time > 720 hours (open tickets older than that are delayed)",
+  "resolution_time_threshold_hours": 720.0,
+  "threshold_mode": "auto",
+  "threshold_sweep_validation": [
+    {
+      "threshold_h": 24,
+      "threshold_days": 1.0,
+      "delayed_share_train": 0.8413,
+      "delayed_share_val": 0.7898,
+      "val_roc_auc": 0.733,
+      "val_pr_auc": 0.9025,
+      "val_pr_auc_lift": 1.1427
+    },
+    {
+      "threshold_h": 48,
+      "threshold_days": 2.0,
+      "delayed_share_train": 0.7875,
+      "delayed_share_val": 0.7314,
+      "val_roc_auc": 0.7249,
+      "val_pr_auc": 0.8722,
+      "val_pr_auc_lift": 1.1925
+    },
+    {
+      "threshold_h": 72,
+      "threshold_days": 3.0,
+      "delayed_share_train": 0.7452,
+      "delayed_share_val": 0.6899,
+      "val_roc_auc": 0.7204,
+      "val_pr_auc": 0.8432,
+      "val_pr_auc_lift": 1.2223
+    },
+    {
+      "threshold_h": 168,
+      "threshold_days": 7.0,
+      "delayed_share_train": 0.6032,
+      "delayed_share_val": 0.5477,
+      "val_roc_auc": 0.695,
+      "val_pr_auc": 0.7322,
+      "val_pr_auc_lift": 1.3367
+    },
+    {
+      "threshold_h": 336,
+      "threshold_days": 14.0,
+      "delayed_share_train": 0.4563,
+      "delayed_share_val": 0.4103,
+      "val_roc_auc": 0.7012,
+      "val_pr_auc": 0.6425,
+      "val_pr_auc_lift": 1.5658
+    },
+    {
+      "threshold_h": 720,
+      "threshold_days": 30.0,
+      "delayed_share_train": 0.3072,
+      "delayed_share_val": 0.2647,
+      "val_roc_auc": 0.7158,
+      "val_pr_auc": 0.5299,
+      "val_pr_auc_lift": 2.002
+    },
+    {
+      "threshold_h": 1440,
+      "threshold_days": 60.0,
+      "delayed_share_train": 0.1972,
+      "delayed_share_val": 0.168,
+      "val_roc_auc": 0.7494,
+      "val_pr_auc": 0.478,
+      "val_pr_auc_lift": 2.8445
+    }
+  ],
+  "column_mapping": {
+    "ticket_id": "id",
+    "created": "issue_created",
+    "resolved": "issue_resolution_date",
+    "priority": "issue_priority",
+    "category": "issue_type",
+    "project": "issue_proj",
+    "reporter": "issue_reporter",
+    "country": null,
+    "text": null
+  },
+  "selected_model": "random_forest",
+  "selected_model_params": {
+    "max_depth": 14,
+    "min_samples_leaf": 40,
+    "half_life_days": 1095
+  },
+  "calibration": "sigmoid",
+  "operational_goal": "high_recall",
+  "decision_threshold": 0.1842017182035581,
+  "risk_categories": {
+    "low": "p < 0.4",
+    "medium": "0.4 <= p < 0.7",
+    "high": "p >= 0.7"
+  },
+  "feature_names": {
+    "numeric": [
+      "created_hour",
+      "created_dow",
+      "is_weekend",
+      "created_month",
+      "global_open_now",
+      "global_created_24h",
+      "global_created_7d",
+      "global_delay_rate",
+      "global_recent_rate",
+      "global_recent_n",
+      "global_recent_log_hrs",
+      "category_open_now",
+      "category_created_24h",
+      "category_created_7d",
+      "category_prior_n",
+      "category_delay_rate",
+      "category_recent_n",
+      "category_recent_rate",
+      "category_gap_hrs",
+      "category_recent_log_hrs",
+      "project_open_now",
+      "project_created_24h",
+      "project_created_7d",
+      "project_prior_n",
+      "project_delay_rate",
+      "project_recent_n",
+      "project_recent_rate",
+      "project_gap_hrs",
+      "project_recent_log_hrs",
+      "priority_open_now",
+      "priority_created_24h",
+      "priority_created_7d",
+      "priority_prior_n",
+      "priority_delay_rate",
+      "priority_recent_n",
+      "priority_recent_rate",
+      "priority_gap_hrs",
+      "priority_recent_log_hrs",
+      "reporter_open_now",
+      "reporter_created_24h",
+      "reporter_created_7d",
+      "reporter_prior_n",
+      "reporter_delay_rate",
+      "reporter_recent_n",
+      "reporter_recent_rate",
+      "reporter_gap_hrs",
+      "reporter_recent_log_hrs",
+      "project_category_open_now",
+      "project_category_created_24h",
+      "project_category_created_7d",
+      "project_category_prior_n",
+      "project_category_delay_rate",
+      "project_category_recent_n",
+      "project_category_recent_rate",
+      "project_category_gap_hrs",
+      "project_category_recent_log_hrs",
+      "project_priority_open_now",
+      "project_priority_created_24h",
+      "project_priority_created_7d",
+      "project_priority_prior_n",
+      "project_priority_delay_rate",
+      "project_priority_recent_n",
+      "project_priority_recent_rate",
+      "project_priority_gap_hrs",
+      "project_priority_recent_log_hrs"
+    ],
+    "categorical": [
+      "priority",
+      "category",
+      "project"
+    ]
+  },
+  "split": {
+    "train": {
+      "rows": 29244,
+      "from": "2016-01-03 05:01:54",
+      "to": "2021-01-24 07:30:46.476000",
+      "delayed_share": 0.30717412118725207
+    },
+    "validation": {
+      "rows": 5932,
+      "from": "2021-02-23 07:44:58.933000",
+      "to": "2022-03-06 07:15:35",
+      "delayed_share": 0.26466621712744437
+    },
+    "test": {
+      "rows": 6410,
+      "from": "2022-04-05 07:20:27",
+      "to": "2023-03-14 11:43:55",
+      "delayed_share": 0.19890795631825273
+    }
+  },
+  "label_embargo_rows_removed": {
+    "train": 666,
+    "validation": 478
+  },
+  "rows_excluded_report": {
+    "rows_in_file": 42974,
+    "exact_duplicates_removed": 0,
+    "duplicate_ticket_ids_remaining(info only)": 0,
+    "excluded: missing/invalid creation time": 0,
+    "observation_end (latest timestamp in data)": "2023-03-14 14:19:28",
+    "excluded: negative resolution time": 0,
+    "open tickets already past threshold -> labelled delayed": 609,
+    "excluded: open tickets younger than threshold (unknown yet)": 244,
+    "ROWS USED FOR MODELLING": 42730
+  },
+  "metrics": {
+    "validation": {
+      "threshold": 0.1842017182035581,
+      "precision": 0.34495060373216246,
+      "recall": 0.8006369426751593,
+      "f1": 0.48216340621403914,
+      "pr_auc": 0.5471908141923092,
+      "roc_auc": 0.7191958927272887,
+      "brier": 0.16432312626256987,
+      "tn": 1975,
+      "fp": 2387,
+      "fn": 313,
+      "tp": 1257
+    },
+    "test": {
+      "threshold": 0.1842017182035581,
+      "precision": 0.2785931874826918,
+      "recall": 0.7890196078431373,
+      "f1": 0.41178878428162097,
+      "pr_auc": 0.49345398461307494,
+      "roc_auc": 0.7415522080302422,
+      "brier": 0.1352062689921894,
+      "tn": 2530,
+      "fp": 2605,
+      "fn": 269,
+      "tp": 1006
+    },
+    "all_models_validation": {
+      "baseline_majority": {
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "pr_auc": 0.26466621712744437,
+        "roc_auc": 0.5,
+        "brier": 0.19642493254645066,
+        "tn": 4362,
+        "fp": 0,
+        "fn": 1570,
+        "tp": 0
+      },
+      "logistic_regression": {
+        "threshold": 0.20085191433791255,
+        "precision": 0.313373253493014,
+        "recall": 0.8,
+        "f1": 0.4503406238795267,
+        "pr_auc": 0.499496577145224,
+        "roc_auc": 0.6787931089869954,
+        "brier": 0.17957623288812374,
+        "tn": 1610,
+        "fp": 2752,
+        "fn": 314,
+        "tp": 1256
+      },
+      "random_forest": {
+        "threshold": 0.3129688840684135,
+        "precision": 0.34495060373216246,
+        "recall": 0.8006369426751593,
+        "f1": 0.48216340621403914,
+        "pr_auc": 0.5471908141923092,
+        "roc_auc": 0.7191958927272887,
+        "brier": 0.1765232065049396,
+        "tn": 1975,
+        "fp": 2387,
+        "fn": 313,
+        "tp": 1257
+      },
+      "xgboost": {
+        "threshold": 0.14122360944747925,
+        "precision": 0.3480188417844278,
+        "recall": 0.8,
+        "f1": 0.4850357211816953,
+        "pr_auc": 0.5419005399949667,
+        "roc_auc": 0.7198748163788596,
+        "brier": 0.16721959010592802,
+        "tn": 2009,
+        "fp": 2353,
+        "fn": 314,
+        "tp": 1256
+      }
+    },
+    "all_models_test": {
+      "baseline_majority": {
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "pr_auc": 0.19890795631825273,
+        "roc_auc": 0.5,
+        "brier": 0.17106514368699013,
+        "tn": 5135,
+        "fp": 0,
+        "fn": 1275,
+        "tp": 0
+      },
+      "logistic_regression": {
+        "threshold": 0.20085191433791255,
+        "precision": 0.27821939586645467,
+        "recall": 0.6862745098039216,
+        "f1": 0.39592760180995473,
+        "pr_auc": 0.39862884385836683,
+        "roc_auc": 0.6845253450942208,
+        "brier": 0.15142265694843926,
+        "tn": 2865,
+        "fp": 2270,
+        "fn": 400,
+        "tp": 875
+      },
+      "random_forest": {
+        "threshold": 0.3129688840684135,
+        "precision": 0.2785931874826918,
+        "recall": 0.7890196078431373,
+        "f1": 0.41178878428162097,
+        "pr_auc": 0.49345398461307494,
+        "roc_auc": 0.7415522080302422,
+        "brier": 0.1587128197287182,
+        "tn": 2530,
+        "fp": 2605,
+        "fn": 269,
+        "tp": 1006
+      },
+      "xgboost": {
+        "threshold": 0.14122360944747925,
+        "precision": 0.3003835939805252,
+        "recall": 0.7984313725490196,
+        "f1": 0.4365351629502573,
+        "pr_auc": 0.5003653990481612,
+        "roc_auc": 0.7608056971571491,
+        "brier": 0.1315202203994827,
+        "tn": 2764,
+        "fp": 2371,
+        "fn": 257,
+        "tp": 1018
+      },
+      "FINAL: random_forest + sigmoid calibration": {
+        "threshold": 0.1842017182035581,
+        "precision": 0.2785931874826918,
+        "recall": 0.7890196078431373,
+        "f1": 0.41178878428162097,
+        "pr_auc": 0.49345398461307494,
+        "roc_auc": 0.7415522080302422,
+        "brier": 0.1352062689921894,
+        "tn": 2530,
+        "fp": 2605,
+        "fn": 269,
+        "tp": 1006
+      }
+    }
+  },
+  "random_state": 42
+}

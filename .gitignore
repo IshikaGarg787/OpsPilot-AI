@@ -1,0 +1,20 @@
+Help Desk Tickets/
+venv/
+.venv/
+.venv312/
+.venv-*/
+work/
+node_modules/
+client/node_modules/
+server/node_modules/
+client/dist/
+server/dist/
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+/data/raw/
+.tmp/

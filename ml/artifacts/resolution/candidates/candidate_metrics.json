@@ -1,0 +1,32 @@
+{
+  "model_id": "resolution-time-v2",
+  "selected_model": "HistGradientBoostingRegressor (log1p target, squared loss)",
+  "generated_at_utc": "2026-10-29T06:42:29.742589+00:00",
+  "train_rows": 46086,
+  "val_rows": 9875,
+  "test_rows": 9877,
+  "train_val_rows": 55961,
+  "validation_metrics": {
+    "mae_hours": 878.7,
+    "rmse_hours": 2402.48,
+    "r2": -0.0972
+  },
+  "held_out_test_metrics": {
+    "mae_hours": 488.76,
+    "mae_days": 20.37,
+    "rmse_hours": 1183.79,
+    "rmse_days": 49.32,
+    "median_absolute_error_hours": 127.14,
+    "r2": -0.0417
+  },
+  "original_baseline_comparison": {
+    "original_test_mae_hours": 692.21,
+    "original_test_med_ae_hours": 463.47,
+    "original_test_rmse_hours": 1215.48,
+    "original_test_r2": -0.0982,
+    "mae_reduction_hours": 203.45,
+    "mae_reduction_percent": 29.4,
+    "med_ae_reduction_hours": 336.33,
+    "med_ae_reduction_percent": 72.6
+  }
+}

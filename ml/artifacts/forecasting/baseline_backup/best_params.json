@@ -1,0 +1,95 @@
+{
+  "holt_winters": {
+    "trend": "add",
+    "damped": true,
+    "train_days": 730
+  },
+  "prophet": {
+    "mode": "multiplicative",
+    "changepoint_prior_scale": 0.01,
+    "seasonality_prior_scale": 1.0,
+    "yearly": false,
+    "train_days": 1095,
+    "use_holidays": true
+  },
+  "xgboost": {
+    "objective": "reg:absoluteerror",
+    "log_target": true,
+    "n_estimators": 200,
+    "learning_rate": 0.1,
+    "max_depth": 4,
+    "min_child_weight": 3,
+    "subsample": 0.8,
+    "colsample_bytree": 0.5,
+    "reg_lambda": 10.0,
+    "train_days": null,
+    "use_holidays": true
+  },
+  "xgboost_top5": [
+    {
+      "objective": "reg:absoluteerror",
+      "log_target": true,
+      "n_estimators": 200,
+      "learning_rate": 0.1,
+      "max_depth": 4,
+      "min_child_weight": 3,
+      "subsample": 0.8,
+      "colsample_bytree": 0.5,
+      "reg_lambda": 10.0,
+      "train_days": null,
+      "use_holidays": true
+    },
+    {
+      "objective": "reg:squarederror",
+      "log_target": true,
+      "n_estimators": 300,
+      "learning_rate": 0.05,
+      "max_depth": 3,
+      "min_child_weight": 3,
+      "subsample": 0.6,
+      "colsample_bytree": 1.0,
+      "reg_lambda": 0.1,
+      "train_days": null,
+      "use_holidays": true
+    },
+    {
+      "objective": "reg:absoluteerror",
+      "log_target": true,
+      "n_estimators": 500,
+      "learning_rate": 0.02,
+      "max_depth": 3,
+      "min_child_weight": 5,
+      "subsample": 0.6,
+      "colsample_bytree": 0.8,
+      "reg_lambda": 0.1,
+      "train_days": 730,
+      "use_holidays": true
+    },
+    {
+      "objective": "reg:squarederror",
+      "log_target": true,
+      "n_estimators": 500,
+      "learning_rate": 0.02,
+      "max_depth": 4,
+      "min_child_weight": 3,
+      "subsample": 1.0,
+      "colsample_bytree": 0.8,
+      "reg_lambda": 5.0,
+      "train_days": null,
+      "use_holidays": true
+    },
+    {
+      "objective": "count:poisson",
+      "log_target": false,
+      "n_estimators": 500,
+      "learning_rate": 0.02,
+      "max_depth": 3,
+      "min_child_weight": 3,
+      "subsample": 0.8,
+      "colsample_bytree": 0.8,
+      "reg_lambda": 5.0,
+      "train_days": 730,
+      "use_holidays": true
+    }
+  ]
+}
