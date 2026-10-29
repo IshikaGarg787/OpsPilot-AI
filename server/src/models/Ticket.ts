@@ -29,6 +29,14 @@ const ticketSchema = new mongoose.Schema({
   status: { type: String, enum: ['open', 'triaged', 'assigned', 'in_progress', 'waiting_customer', 'resolved', 'closed'], default: 'open', index: true },
   resolutionCompletedAt: { type: Date },
   resolutionReopenedAt: { type: Date },
+  slaSnapshot: {
+    policyId: { type: mongoose.Schema.Types.ObjectId, ref: 'SlaPolicy' },
+    policyName: String, priority: String,
+    firstResponseStartAt: Date, firstResponseDeadlineAt: Date, firstResponseAt: Date,
+    resolutionStartAt: Date, resolutionDeadlineAt: Date, resolutionAt: Date,
+    firstResponseStatus: { type: String, enum: ['pending', 'on_track', 'at_risk', 'breached', 'met'] },
+    resolutionStatus: { type: String, enum: ['pending', 'on_track', 'at_risk', 'breached', 'met'] },
+  },
   delayExplanation: { type: String, maxlength: 2000 },
   assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
   aiSignals: {

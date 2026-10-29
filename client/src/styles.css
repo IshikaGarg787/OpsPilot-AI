@@ -304,6 +304,12 @@ p { line-height: 1.65; }
 .data-table { width:100%; border-collapse:collapse; text-align:left; font-size:13px; }
 .data-table th { padding:12px 14px; color:var(--muted, #737b8d); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.04em; background:var(--subtle-surface, #f8f9fc); }
 .data-table td { padding:13px 14px; border-top:1px solid var(--border-color, #edf0f5); white-space:nowrap; }
+.sla-management-page .field { display:flex; flex-direction:column; gap:7px; }
+.sla-management-page .field input,.sla-management-page .field select { width:100%; min-height:42px; padding:0 12px; border:1px solid var(--border-strong); border-radius:9px; background:var(--input-bg); color:var(--text); }
+.sla-management-page .field input:focus,.sla-management-page .field select:focus { outline:3px solid rgba(115,167,255,.15); border-color:var(--blue); }
+.sla-management-page .field option { background:var(--surface-raised); color:var(--text); }
+.sla-management-page .data-table th { background:var(--surface-raised); color:var(--muted); }
+.sla-management-page .data-table td { border-color:var(--border); color:var(--text-soft); }
 .risk-pill,.neutral-pill { display:inline-flex; border-radius:999px; padding:5px 9px; font-size:11px; font-weight:650; }
 .risk-pill { background:#fff0ed; color:#b64132; }
 .neutral-pill { background:#eef7f0; color:#267444; }

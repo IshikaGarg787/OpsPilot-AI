@@ -10,6 +10,7 @@ import { predictDelayRisk, predictResolution } from '../services/mlService.js';
 import { customerTicketCreateSchema, customerTicketListQuerySchema, recommendationDecisionSchema, ticketAssignmentSchema, ticketCreateSchema, ticketResponseSchema, ticketStatusSchema } from '../validators/schemas.js';
 import { z } from 'zod';
 import { calculateTicketSlaForRecord } from '../services/slaPolicy.js';
+import { recordFirstResponse, recordResolution, startTicketSla } from '../services/slaManagementService.js';
 import { buildCustomerActivity, customerTicketFilter, CUSTOMER_ESTIMATE_PROJECT, CUSTOMER_TICKET_CATEGORY, CUSTOMER_TICKET_PRIORITY, CUSTOMER_TICKET_PROJECT, isCustomerTicketOwner, serializeCustomerTicket, summarizeCustomerTicketCounts } from '../services/customerTickets.js';
 
 const router = Router();
@@ -128,6 +129,7 @@ router.post('/', requireRole('customer', 'it_team'), asyncHandler(async (req, re
   });
   addAudit(ticket, req, 'ticket_created', `${role} submitted a ticket`);
   await ticket.save();
+  await startTicketSla(ticket);
   res.status(201).json({ success: true, data: { ticket: await serialize(ticket, role) }, message: unavailable.length ? 'Ticket submitted; one or more model signals are currently unavailable.' : 'Ticket submitted and scored by the available models.' });
 }));
 
@@ -190,6 +192,7 @@ router.post('/:ticketId/responses', asyncHandler(async (req, res) => {
   ticket.responses.push({ authorId: req.user!._id, authorName: req.user!.name, authorRole: role, visibility, message: input.message, ...(role !== 'customer' && input.resolutionNote ? { resolutionNote: input.resolutionNote } : {}) } as any);
   addAudit(ticket, req, 'response_added', visibility === 'internal' ? 'Internal note added' : 'Public response added');
   await ticket.save();
+  if (role !== 'customer' && visibility === 'public') await recordFirstResponse(ticket);
   res.status(201).json({ success: true, data: { ticket: await serialize(ticket, role) }, message: 'Ticket update added.' });
 }));
 
@@ -211,6 +214,8 @@ router.patch('/:ticketId/status', asyncHandler(async (req, res) => {
   if (input.resolutionNote) ticket.responses.push({ authorId: req.user!._id, authorName: req.user!.name, authorRole: role, visibility: 'public', message: `Status updated to ${input.status.replaceAll('_', ' ')}.`, resolutionNote: input.resolutionNote } as any);
   addAudit(ticket, req, 'status_changed', `${previous} → ${input.status}`);
   await ticket.save();
+  if ((input.status === 'resolved' || input.status === 'closed') && previous !== 'resolved' && previous !== 'closed') await recordResolution(ticket, true, now);
+  else if (previous === 'resolved' || previous === 'closed') await recordResolution(ticket, false, now);
   res.json({ success: true, data: { ticket: await serialize(ticket, role) }, message: 'Ticket status updated.' });
 }));
 
@@ -237,6 +242,7 @@ router.patch('/:ticketId/priority', requireRole('admin'), asyncHandler(async (re
   ticket.priority = input.priority;
   addAudit(ticket, req, 'priority_changed', `${previous} → ${input.priority}: ${input.note}`);
   await ticket.save();
+  await startTicketSla(ticket, new Date());
   res.json({ success: true, data: { ticket: await serialize(ticket, 'admin') }, message: 'Ticket priority updated.' });
 }));
 
