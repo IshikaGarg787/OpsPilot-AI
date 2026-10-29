@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { UserModel } from '../src/models/User.js';
+import { publicUser, UserModel } from '../src/models/User.js';
+import { TicketModel } from '../src/models/Ticket.js';
 
 test('user model normalizes email and enforces its required role contract', async () => {
   const user = new UserModel({
@@ -27,4 +28,37 @@ test('username is optional for legacy users and protected by a partial unique in
   assert.deepEqual(usernameIndex[1].partialFilterExpression, { username: { $type: 'string' } });
   const legacyUser = new UserModel({ name: 'Legacy User', email: 'legacy@example.com', passwordHash: 'hash' });
   assert.equal(legacyUser.username, undefined);
+});
+
+test('public user contract omits password hashes and maps only the supported customer role', () => {
+  const user = new UserModel({
+    name: 'Test Customer',
+    email: 'customer@example.test',
+    passwordHash: 'test-only-hash',
+  });
+
+  const result = publicUser(user);
+  assert.deepEqual(Object.keys(result).sort(), ['email', 'id', 'name', 'role', 'themePreference']);
+  assert.equal(result.role, 'customer');
+  assert.equal(JSON.stringify(result).includes('test-only-hash'), false);
+});
+
+test('ticket contract validates the persisted fields and rejects unsupported lifecycle statuses', async () => {
+  const ticket = new TicketModel({
+    ticketNumber: 'OP-TEST-1',
+    ownerUserId: new UserModel()._id,
+    ownerRole: 'customer',
+    subject: 'Example issue',
+    description: 'A sufficiently detailed issue description.',
+    category: 'Access',
+    priority: 'Normal',
+    project: 'Workspace',
+    status: 'open',
+  });
+
+  await ticket.validate();
+  assert.equal(ticket.status, 'open');
+
+  ticket.status = 'resolved-again' as never;
+  await assert.rejects(ticket.validate(), /`resolved-again` is not a valid enum value/);
 });
