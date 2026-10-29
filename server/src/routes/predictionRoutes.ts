@@ -3,8 +3,8 @@ import { requireAuth } from '../middleware/auth.js';
 import { asyncHandler, HttpError } from '../middleware/errorHandler.js';
 import { PredictionModel } from '../models/Prediction.js';
 import { databaseStatus } from '../config/database.js';
-import { predictDelayRisk, predictResolution, forecastWorkload, MlServiceError } from '../services/mlService.js';
-import { listQuerySchema, resolutionPredictionSchema, triagePipelineSchema } from '../validators/schemas.js';
+import { predictDelayRisk, predictResolution, forecastWorkload, checkWorkloadForecastHealth, MlServiceError } from '../services/mlService.js';
+import { listQuerySchema, resolutionPredictionSchema, triagePipelineSchema, workloadForecastSchema } from '../validators/schemas.js';
 import { z } from 'zod';
 import { requireRole } from '../middleware/auth.js';
 import { normalizedRole } from '../models/User.js';
@@ -75,13 +75,13 @@ router.post('/resolution-time', asyncHandler(async (req, res) => {
     const saved = await PredictionModel.create({
       userId: req.user!._id,
       modelId: 'resolution-time',
-      modelVersion: response.model_version ?? response.artifact_generated_at,
+      modelVersion: response.model_version,
       predictionType: response.prediction_type,
       input: { issueCreated: new Date(input.issue_created), priority: input.issue_priority, issueType: input.issue_type, project: input.issue_proj },
       output: { duration: response.duration, unit: response.unit },
       status: 'success',
     });
-    res.status(201).json({ success: true, data: { prediction: serialize(saved), duration: response.duration, unit: response.unit, predictionType: response.prediction_type, modelId: 'resolution-time', modelVersion: response.model_version ?? response.artifact_generated_at }, message: 'Prediction created.' });
+    res.status(201).json({ success: true, data: { prediction: serialize(saved), duration: response.duration, unit: response.unit, predictionType: response.prediction_type, modelId: 'resolution-time', modelVersion: response.model_version }, message: 'Prediction created.' });
   } catch (error) {
     const code = error instanceof MlServiceError ? error.code : 'ML_INVALID_RESPONSE';
     await PredictionModel.create({
@@ -93,6 +93,24 @@ router.post('/resolution-time', asyncHandler(async (req, res) => {
       errorCode: code,
     }).catch(() => undefined);
     throw error instanceof MlServiceError ? error : new HttpError(503, 'The model service returned an invalid response.', code);
+  }
+}));
+
+router.get('/workload/health', asyncHandler(async (_req, res) => {
+  const health = await checkWorkloadForecastHealth();
+  res.json({ success: true, data: { ...health.data, available: health.available }, message: health.available ? 'Workload forecast service is ready.' : 'Workload forecast service is unavailable.' });
+}));
+
+router.post('/workload', asyncHandler(async (req, res) => {
+  const input = workloadForecastSchema.parse(req.body);
+  try {
+    const result = await forecastWorkload(input.records, input.horizon);
+    workloadResponseSchema.parse(result);
+    res.json({ success: true, data: result, message: 'Workload forecast generated.' });
+  } catch (error) {
+    if (error instanceof MlServiceError) throw new HttpError(error.status, error.message, error.code);
+    if (error instanceof z.ZodError) throw new HttpError(503, 'The workload service returned an invalid response.', 'ML_INVALID_RESPONSE');
+    throw error;
   }
 }));
 
@@ -142,7 +160,7 @@ router.post('/triage', requireRole('admin'), asyncHandler(async (req, res) => {
         delayRiskProbability: risk.risk_probability, delayRiskCategory: risk.risk_category,
         flaggedForReview: risk.flagged_for_review, reviewThreshold: risk.decision_threshold,
         targetThresholdHours: risk.target_threshold_hours, resolutionHours: duration.duration,
-        riskModelVersion: risk.model_version, resolutionModelVersion: duration.model_version ?? duration.artifact_generated_at,
+        riskModelVersion: risk.model_version, resolutionModelVersion: duration.model_version,
         ...(riskExplanation ? { riskExplanation } : {}),
         ...(assignmentRecommendation ? { recommendedAssignee: { id: String(assignmentRecommendation._id), name: assignmentRecommendation.name, activeTickets: loadByMember.get(String(assignmentRecommendation._id)) ?? 0 } } : {}),
         recommendedPriority,
@@ -167,7 +185,7 @@ router.post('/triage', requireRole('admin'), asyncHandler(async (req, res) => {
     const saved = await PredictionModel.create({
       userId: req.user!._id,
       modelId: 'triage-pipeline',
-      modelVersion: `${risk.model_version} | ${duration.model_version ?? duration.artifact_generated_at ?? 'resolution'} | ${workload.model_id}`,
+      modelVersion: `${risk.model_version} | ${duration.model_version ?? 'resolution'} | ${workload.model_id}`,
       predictionType: 'integrated_operational_decision',
       input: { issueCreated: new Date(input.issue_created), priority: input.issue_priority, issueType: input.issue_type, project: input.issue_proj, complaint: input.complaint, ...(linkedTicket ? { ticketId: linkedTicket._id } : {}) },
       output: {

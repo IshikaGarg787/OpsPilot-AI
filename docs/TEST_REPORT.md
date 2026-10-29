@@ -59,3 +59,14 @@ Capacity scenario support was added: Admins compare explicit baseline/proposed d
 - Workload inference for linked triage still depends on a refreshed CSV spanning at least 120 calendar days. The project bundle does not include raw data suitable for a full demo import.
 - The primary `.venv` folder found in the workspace contained Python 3.11-incompatible compiled dependencies; the suite passed in `.venv312`. Follow the documented clean Python 3.12 setup when reproducing locally.
 - Complaint-text modeling is not implemented. The current workload model forecasts ticket inflow only; capacity scenario comparisons use explicitly entered Admin ticket-per-day capacities and should not be presented as inferred staffing advice or causal savings.
+
+## Latest verification - 2026-10-29
+
+| Check | Result |
+|---|---|
+| Express TypeScript build | Passed. |
+| Server test suite | 39 passed, 0 failed, including assigned-identity resolution tests. |
+| Client production build | Passed; Triage and standalone workload pages compile with the shared history reducer and authenticated forecast client. |
+| Python tests | 21 passed, 0 failed across resolution, workload, and main-service smoke tests. |
+
+The standalone workload page now obtains health and forecasts through authenticated Express routes; the FastAPI service is no longer called directly by that page. The rewritten main-service test invokes route functions directly, so it does not require an HTTP test-client dependency.

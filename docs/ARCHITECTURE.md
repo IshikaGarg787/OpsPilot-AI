@@ -20,13 +20,13 @@ sequenceDiagram
   API-->>UI: Prediction record and result
 ```
 
-The workload upload follows a separate, currently unauthenticated path: the browser posts CSV-derived records directly to FastAPI at `VITE_ML_BASE_URL/forecast/workload`. Forecast results are returned to the page and are not persisted in MongoDB. The page checks `/forecast/health` before enabling the forecast action.
+The standalone workload upload uses the authenticated Express API: the browser posts CSV-derived daily records to `POST /api/v1/predictions/workload`, which validates the request and forwards it to FastAPI `/forecast/workload`. Forecast results are returned to the page and are not persisted in MongoDB. The page checks `GET /api/v1/predictions/workload/health` before enabling the forecast action. Both the Triage and standalone pages use the same client history reducer, so ticket-level uploads retain only `Ticket`, `Service`, and `HD Service` issue types before aggregation.
 
 ## Boundaries
 
 ### React client
 
-The client owns navigation, accessible forms, theme state, loading/error/empty states, charts, and presentation. Authenticated API calls use `credentials: include` through one centralized typed API client. The workload CSV page calls the configured FastAPI service directly; the client does not connect to MongoDB or import Python code.
+The client owns navigation, accessible forms, theme state, loading/error/empty states, charts, and presentation. Authenticated API calls use `credentials: include` through one centralized typed API client. The workload CSV page calls the Express proxy rather than the FastAPI service directly; the client does not connect to MongoDB or import Python code.
 
 ### Express API
 

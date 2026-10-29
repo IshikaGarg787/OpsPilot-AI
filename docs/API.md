@@ -108,17 +108,17 @@ Workload forecasts incoming volume, not staffing capacity. The ticket UI exposes
 
 `GET /capacity-plans` and `POST /capacity-plans` are Admin-only. A new scenario references a ticket with a completed workload outlook, horizon, baseline and proposed tickets-per-day capacity, and a human rationale. The API compares each forecast day against each entered capacity, saves expected demand, covered and uncovered volume, and coverage change, and adds an audit event to the source ticket. This is transparent arithmetic over Admin inputs; it does not infer staffing levels, labor hours, or causal operational improvements.
 
-## Workload forecast (FastAPI service)
+## Workload forecast (authenticated Express proxy)
 
-The forecast endpoints run on the ML service at `http://localhost:8000`, outside the Express `/api/v1` prefix. The browser calls this service directly for the CSV workflow.
+The standalone workload page uses these authenticated Express routes. Express validates the request, forwards it to the FastAPI model service at `http://localhost:8000`, validates the forecast response, and returns the result to the browser.
 
 ### Readiness
 
-`GET /forecast/health` reports whether the XGBoost dependency imports and at least one valid saved configuration can be read. It does not run a forecast fit; an individual request can still fail on invalid or insufficient history.
+`GET /predictions/workload/health` proxies `GET /forecast/health` and reports whether the XGBoost dependency imports and at least one valid saved configuration can be read. It does not run a forecast fit; an individual request can still fail on invalid or insufficient history.
 
 ### Generate a forecast
 
-`POST /forecast/workload` accepts either ticket-level records or daily aggregates. At least 120 calendar days between the first and last valid date are required. Counts must be finite whole numbers at or above zero. Timestamps are normalized to UTC dates, and gaps are filled with zero.
+`POST /predictions/workload` accepts either ticket-level records or daily aggregates. At least 120 calendar days between the first and last valid date are required. Counts must be finite whole numbers at or above zero. Timestamps are normalized to UTC dates, and gaps are filled with zero.
 
 Example request (records abbreviated; a real request must cover at least 120 calendar days):
 
@@ -132,8 +132,8 @@ Example request (records abbreviated; a real request must cover at least 120 cal
 }
 ```
 
-The API also accepts ticket-level rows such as `{"issue_created":"2024-01-01T09:30:00Z","issue_type":"Ticket"}`. Only `horizon: 7` and `horizon: 14` are supported. If `issue_type` is supplied, only `Ticket`, `Service`, and `HD Service` records are retained.
+The API also accepts ticket-level rows such as `{"issue_created":"2024-01-01T09:30:00Z","issue_type":"Ticket"}`. Only `horizon: 7` and `horizon: 14` are supported. If `issue_type` is supplied, only `Ticket`, `Service`, and `HD Service` records are retained. The Triage and standalone pages both apply that filter in the browser before reducing ticket rows to daily counts.
 
 The response includes `history_start`, `history_end`, `history_days`, `ticket_total`, `forecast`, `recent_history`, and notes. Each forecast row includes `date`, `weekday`, `forecast`, `planning_low`, `planning_high`, `high_load_threshold`, and `high_load_flag`. `planning_low` and `planning_high` are variability-based planning estimates, not calibrated confidence limits. Forecasts are refit from the submitted data and are not persisted by the current workflow.
 
-Invalid schemas, timestamps, counts, or insufficient history return HTTP 422. Missing configuration or an inference failure returns HTTP 503. The present ML CORS allowlist is limited to `localhost:5173` and `127.0.0.1:5173`; configure it before hosting the client elsewhere.
+Invalid schemas, timestamps, counts, or insufficient history return HTTP 422. Missing configuration or an inference failure returns HTTP 503. The FastAPI service remains reachable only through Express for the product UI; its CORS allowlist no longer needs to include a deployed browser origin.

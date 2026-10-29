@@ -5,11 +5,11 @@ import type { UserDocument } from '../src/models/User.js';
 import { HttpError } from '../src/middleware/errorHandler.js';
 import { requireAdminOwner, requireAuth, requireRole } from '../src/middleware/auth.js';
 import { adminAuthorization } from '../src/routes/adminRoutes.js';
+import { ADMIN_OWNER_EMAIL, ADMIN_OWNER_USERNAME } from '../src/security/adminPolicy.js';
 
-function invokeRoleGuard(role: string | undefined, allowedRoles: string[], username?: string) {
+function invokeRoleGuard(role: string | undefined, allowedRoles: string[], identity: { username?: string; email?: string } = {}) {
   const request = {
-    ...(role === undefined ? {} : { user: { role } as UserDocument }),
-    ...(username === undefined ? {} : { username }),
+    ...(role === undefined ? {} : { user: { role, ...identity } as UserDocument }),
   } as Request;
   let nextError: unknown;
   let nextCalled = false;
@@ -20,9 +20,9 @@ function invokeRoleGuard(role: string | undefined, allowedRoles: string[], usern
   return { nextCalled, nextError };
 }
 
-function invokeAdminOwnerGuard(role: string | undefined, username?: string) {
+function invokeAdminOwnerGuard(role: string | undefined, username?: string, email?: string) {
   const request = {
-    ...(role === undefined ? {} : { user: { role, username } as UserDocument }),
+    ...(role === undefined ? {} : { user: { role, ...(username === undefined ? {} : { username }), ...(email === undefined ? {} : { email }) } as UserDocument }),
   } as Request;
   let nextError: unknown;
   let nextCalled = false;
@@ -42,7 +42,7 @@ test('role guard rejects requests without authenticated session context', () => 
 });
 
 test('matching the fixed username without authenticated credentials grants no access', () => {
-  const result = invokeRoleGuard(undefined, ['admin'], 'deepti10648');
+  const result = invokeRoleGuard(undefined, ['admin'], { username: ADMIN_OWNER_USERNAME });
   assert.ok(result.nextError instanceof HttpError);
   assert.equal((result.nextError as HttpError).status, 401);
 });
@@ -57,7 +57,7 @@ test('role guard rejects authenticated users with insufficient role', () => {
 
 test('role guard permits every explicitly allowed role', () => {
   for (const role of ['customer', 'it_team', 'admin']) {
-    const result = invokeRoleGuard(role, ['customer', 'it_team', 'admin']);
+    const result = invokeRoleGuard(role, ['customer', 'it_team', 'admin'], role === 'admin' ? { username: ADMIN_OWNER_USERNAME, email: ADMIN_OWNER_EMAIL } : {});
     assert.equal(result.nextCalled, true);
     assert.equal(result.nextError, undefined);
   }
@@ -68,15 +68,15 @@ test('Admin authorization requires both authenticated Admin role and the provisi
   assert.ok(missingSession.nextError instanceof HttpError);
   assert.equal((missingSession.nextError as HttpError).status, 401);
 
-  const usernameOnly = invokeAdminOwnerGuard('user', 'deepti10648');
+  const usernameOnly = invokeAdminOwnerGuard('user', ADMIN_OWNER_USERNAME, ADMIN_OWNER_EMAIL);
   assert.ok(usernameOnly.nextError instanceof HttpError);
   assert.equal((usernameOnly.nextError as HttpError).status, 403);
 
-  const otherAdmin = invokeAdminOwnerGuard('admin', 'different-admin');
+  const otherAdmin = invokeAdminOwnerGuard('admin', 'different-admin', ADMIN_OWNER_EMAIL);
   assert.ok(otherAdmin.nextError instanceof HttpError);
   assert.equal((otherAdmin.nextError as HttpError).status, 403);
 
-  const owner = invokeAdminOwnerGuard('admin', 'deepti10648');
+  const owner = invokeAdminOwnerGuard('admin', ADMIN_OWNER_USERNAME, ADMIN_OWNER_EMAIL);
   assert.equal(owner.nextCalled, true);
   assert.equal(owner.nextError, undefined);
 });
@@ -90,7 +90,7 @@ test('Admin endpoint mounts authentication before role and owner checks', () => 
   assert.ok(normalUserError instanceof HttpError);
   assert.equal((normalUserError as HttpError).status, 403);
 
-  const owner = { user: { role: 'admin', username: 'deepti10648' } } as unknown as Request;
+  const owner = { user: { role: 'admin', username: ADMIN_OWNER_USERNAME, email: ADMIN_OWNER_EMAIL } } as unknown as Request;
   for (const guard of adminAuthorization.slice(1)) {
     let error: unknown;
     guard(owner, {} as Response, (nextError?: unknown) => { error = nextError; });

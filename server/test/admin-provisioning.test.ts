@@ -7,12 +7,13 @@ import {
   type AdminAccountRecord,
   type AdminAccountRepository,
 } from '../src/services/adminProvisioning.js';
+import { ADMIN_OWNER_EMAIL } from '../src/security/adminPolicy.js';
 
 function configValues(overrides: Record<string, string> = {}) {
   return {
     ADMIN_PROVISION_ACTION: 'provision',
     ADMIN_USERNAME,
-    ADMIN_OWNER_EMAIL: 'owner@example.com',
+    ADMIN_OWNER_EMAIL,
     ADMIN_OWNER_NAME: 'Account Owner',
     ADMIN_OWNER_EMAIL_VERIFIED: 'true',
     ADMIN_PROVISION_CONFIRM: `PROVISION ${ADMIN_USERNAME}`,
@@ -84,7 +85,7 @@ test('provisioning creates once; rerunning is a no-op and does not reset passwor
 
 test('existing normal users are never promoted without explicit promotion approval', async () => {
   const repository = new MemoryAdminRepository();
-  repository.records.push({ id: 'owner-user', username: null, email: 'owner@example.com', role: 'user' });
+  repository.records.push({ id: 'owner-user', username: null, email: ADMIN_OWNER_EMAIL, role: 'user' });
   const config = parseAdminProvisioningConfig(configValues());
   await assert.rejects(provisionAdmin(config, repository, async () => 'hashed'), /explicit ADMIN_ALLOW_EXISTING_USER_PROMOTION/);
   assert.equal(repository.records[0].role, 'user');
@@ -92,7 +93,7 @@ test('existing normal users are never promoted without explicit promotion approv
 
 test('explicitly approved matching owner account can be promoted without password replacement', async () => {
   const repository = new MemoryAdminRepository();
-  repository.records.push({ id: 'owner-user', username: null, email: 'owner@example.com', role: 'user' });
+  repository.records.push({ id: 'owner-user', username: null, email: ADMIN_OWNER_EMAIL, role: 'user' });
   repository.passwords.set('owner-user', 'existing-hash');
   const config = parseAdminProvisioningConfig(configValues({ ADMIN_ALLOW_EXISTING_USER_PROMOTION: 'true' }));
   const result = await provisionAdmin(config, repository, async () => 'must-not-be-used');
@@ -112,7 +113,7 @@ test('single-owner policy refuses provisioning when another Admin already exists
 
 test('password reset requires the exact existing owner Admin identity', async () => {
   const repository = new MemoryAdminRepository();
-  repository.records.push({ id: 'owner', username: ADMIN_USERNAME, email: 'owner@example.com', role: 'admin' });
+  repository.records.push({ id: 'owner', username: ADMIN_USERNAME, email: ADMIN_OWNER_EMAIL, role: 'admin' });
   const config = parseAdminProvisioningConfig(configValues({
     ADMIN_PROVISION_ACTION: 'reset-password',
     ADMIN_PROVISION_CONFIRM: `RESET PASSWORD ${ADMIN_USERNAME}`,

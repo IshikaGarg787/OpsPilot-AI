@@ -1,11 +1,11 @@
-"""Inference engine and explanation service for Model B (Delay-Risk Classification).
+"""DEPRECATED - not part of the running service.
 
-Provides:
-- Robust artifact loading with scikit-learn 1.9 compatibility shims
-- Time-safe history feature computation against history_reference.csv.gz
-- Calibrated probability scoring and operational risk banding (low, medium, high)
-- Configurable operational decision thresholds (high-recall vs balanced F1)
-- Local feature perturbation explanations (what pushed this ticket's risk up/down)
+The live delay-risk path is ``ml/delay_risk_service.py`` on port 8001. This module
+uses different feature settings (SMOOTHING=20 and extra congestion features), so its
+scores are NOT interchangeable with the live artifact. It is kept for historical
+reference only; do not wire it into an API route.
+
+Original purpose: inference engine and explanation service for Model B.
 """
 
 from __future__ import annotations

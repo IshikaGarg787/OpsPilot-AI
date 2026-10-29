@@ -1,4 +1,4 @@
-import type { CustomerDashboardData, CustomerTicketPage, DashboardActivity, DashboardSummary, ModelInfo, ModelMetadata, PaginatedPredictions, Prediction, ThemePreference, Ticket, TicketStatus, TriageResult, User } from '../types';
+import type { CustomerDashboardData, CustomerTicketPage, DashboardActivity, DashboardSummary, ModelInfo, ModelMetadata, PaginatedPredictions, Prediction, ThemePreference, Ticket, TicketStatus, TriageResult, User, WorkloadForecastHealth, WorkloadForecastResult } from '../types';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000/api/v1').replace(/\/$/, '');
 
@@ -41,6 +41,8 @@ export const api = {
   predictions: {
     createResolution: (payload: { issue_created: string; issue_priority: string; issue_type: string; issue_proj: string }) => request<{ prediction: Prediction; duration: number; unit: string; predictionType: string; modelId: string; modelVersion?: string }>('/predictions/resolution-time', { method: 'POST', body: JSON.stringify(payload) }),
     createTriage: (payload: { complaint: string; issue_created: string; issue_priority: string; issue_type: string; issue_proj: string; horizon: 7 | 14; workload_records: { date: string; ticket_count: number }[]; ticketId?: string }) => request<TriageResult>('/predictions/triage', { method: 'POST', body: JSON.stringify(payload) }),
+    workloadHealth: () => request<WorkloadForecastHealth>('/predictions/workload/health'),
+    forecastWorkload: (payload: { records: Array<{ date: string; ticket_count: number }>; horizon: 7 | 14 }) => request<WorkloadForecastResult>('/predictions/workload', { method: 'POST', body: JSON.stringify(payload) }),
     list: (page = 1, pageSize = 20, modelId?: string) => request<PaginatedPredictions>(`/predictions?page=${page}&pageSize=${pageSize}${modelId ? `&modelId=${encodeURIComponent(modelId)}` : ''}`),
     detail: (id: string) => request<{ prediction: Prediction }>(`/predictions/${id}`),
     remove: (id: string) => request<null>(`/predictions/${id}`, { method: 'DELETE' }),

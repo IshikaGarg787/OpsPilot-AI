@@ -102,32 +102,7 @@ def load_resolution_pipeline(artifact_path: str | Path = DEFAULT_ARTIFACT_PATH) 
     return joblib.load(path)
 
 
-def predict_resolution_hours(
-    ticket: Mapping[str, Any] | pd.DataFrame,
-    *,
-    artifact_path: str | Path = DEFAULT_ARTIFACT_PATH,
-) -> float | np.ndarray:
-    """Return a non-negative point estimate in hours for one or more tickets."""
-
-    features = build_resolution_features(ticket)
-    pipeline = load_resolution_pipeline(artifact_path)
-    predictions = np.asarray(pipeline.predict(features), dtype="float64")
-    if not np.isfinite(predictions).all():
-        raise ValueError("The resolution model returned a non-finite prediction")
-    predictions = np.maximum(predictions, 0.0)
-    if len(predictions) == 1:
-        return float(predictions[0])
-    return predictions
-
-
-def predict_resolution_time(
-    ticket: Mapping[str, Any] | pd.DataFrame,
-    *,
-    artifact_path: str | Path = DEFAULT_ARTIFACT_PATH,
-) -> dict[str, Any] | list[dict[str, Any]]:
-    """Return prediction value, unit, and prediction type for API responses."""
-
-    prediction = predict_resolution_hours(ticket, artifact_path=artifact_path)
+def _format_prediction(prediction: float | np.ndarray) -> dict[str, Any] | list[dict[str, Any]]:
     if isinstance(prediction, np.ndarray):
         return [
             {
@@ -142,3 +117,48 @@ def predict_resolution_time(
         "unit": "hours",
         "prediction_type": "point_estimate",
     }
+
+
+def predict_resolution_hours_with_pipeline(
+    pipeline: Any,
+    ticket: Mapping[str, Any] | pd.DataFrame,
+) -> float | np.ndarray:
+    """Return a non-negative point estimate using an already-loaded pipeline."""
+
+    features = build_resolution_features(ticket)
+    predictions = np.asarray(pipeline.predict(features), dtype="float64")
+    if not np.isfinite(predictions).all():
+        raise ValueError("The resolution model returned a non-finite prediction")
+    predictions = np.maximum(predictions, 0.0)
+    if len(predictions) == 1:
+        return float(predictions[0])
+    return predictions
+
+
+def predict_resolution_hours(
+    ticket: Mapping[str, Any] | pd.DataFrame,
+    *,
+    artifact_path: str | Path = DEFAULT_ARTIFACT_PATH,
+) -> float | np.ndarray:
+    """Load the artifact and return a non-negative point estimate in hours."""
+
+    return predict_resolution_hours_with_pipeline(load_resolution_pipeline(artifact_path), ticket)
+
+
+def predict_resolution_time_with_pipeline(
+    pipeline: Any,
+    ticket: Mapping[str, Any] | pd.DataFrame,
+) -> dict[str, Any] | list[dict[str, Any]]:
+    """Return prediction value, unit, and prediction type for an already-loaded pipeline."""
+
+    return _format_prediction(predict_resolution_hours_with_pipeline(pipeline, ticket))
+
+
+def predict_resolution_time(
+    ticket: Mapping[str, Any] | pd.DataFrame,
+    *,
+    artifact_path: str | Path = DEFAULT_ARTIFACT_PATH,
+) -> dict[str, Any] | list[dict[str, Any]]:
+    """Return prediction value, unit, and prediction type for API responses."""
+
+    return predict_resolution_time_with_pipeline(load_resolution_pipeline(artifact_path), ticket)
