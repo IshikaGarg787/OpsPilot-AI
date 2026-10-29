@@ -1,14 +1,24 @@
-import { ArrowRight, BrainCircuit, Clock3, Gauge, History, Sparkles } from 'lucide-react';
+import { ArrowRight, BrainCircuit, Clock3, Gauge, History, Sparkles, Ticket as TicketIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Card, EmptyState, ErrorState, LoadingState, MetricCard, PageIntro, StatusPill } from '../components/ui';
 import { api } from '../services/api';
-import type { DashboardActivity, DashboardSummary } from '../types';
+import { useAuth } from '../contexts/AuthContext';
+import type { DashboardActivity, DashboardSummary, Ticket } from '../types';
 
 const number = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
 const formatDuration = (hours?: number) => hours == null ? '—' : hours >= 24 ? `${number.format(hours / 24)}d` : `${number.format(hours)}h`;
 const formatDate = (value: string) => new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(value));
+
+function MyAssignedWork() {
+  const { user } = useAuth(); const [tickets, setTickets] = useState<Ticket[] | null>(null);
+  useEffect(() => { if (user?.role !== 'it_team') return; api.tickets.list().then(({ tickets: rows }) => setTickets(rows.filter((ticket) => ticket.assignedTo?.id === user.id))).catch(() => setTickets([])); }, [user?.id, user?.role]);
+  if (user?.role !== 'it_team') return null;
+  return <Card title="My assigned work" action={<Link className="card-link" to="/app/tickets">Open my queue <ArrowRight size={14} /></Link>}><div className="ticket-list">{tickets === null ? <p className="field-help">Loading assigned work…</p> : tickets.length ? tickets.map((ticket) => <Link className="ticket-row" to={`/app/tickets/${ticket.id}`} key={ticket.id}><span className="ticket-row-icon"><TicketIcon size={18} /></span><span className="ticket-row-main"><span className="ticket-number">{ticket.ticketNumber} · {ticket.priority}</span><strong>{ticket.subject}</strong><small>{ticket.category} · {ticket.estimatedResolutionAt ? `Estimated ${new Date(ticket.estimatedResolutionAt).toLocaleString()}` : 'Resolution estimate unavailable'}</small></span><span className={`ticket-status ticket-status-${ticket.status}`}>{statusText(ticket.status)}</span><ArrowRight className="ticket-row-arrow" size={17} /></Link>) : <EmptyState title="No tickets assigned" description="New assignments for you will appear here." />}</div></Card>;
+}
+
+const statusText = (status: Ticket['status']) => status.replaceAll('_', ' ');
 
 export function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null); const [activity, setActivity] = useState<DashboardActivity | null>(null); const [error, setError] = useState('');
@@ -16,6 +26,7 @@ export function DashboardPage() {
   if (error) return <><PageIntro eyebrow="Command center" title="Overview" description="A focused view of your operational intelligence." /><ErrorState message={error} onRetry={() => window.location.reload()} /></>;
   if (!summary || !activity) return <><PageIntro eyebrow="Command center" title="Overview" description="A focused view of your operational intelligence." /><LoadingState /></>;
   return <div className="page-stack"><PageIntro eyebrow="Command center" title="Overview" description="Your operational signal, at a glance." action={<Link className="button button-primary" to="/app/triage"><BrainCircuit size={16} /> Start ticket triage</Link>} />
+    <MyAssignedWork />
     <div className="metrics-grid"><MetricCard label="Total predictions" value={number.format(summary.totalPredictions)} detail={summary.totalPredictions ? 'Across your workspace' : 'No history yet'} icon={BrainCircuit} accent="blue" /><MetricCard label="Resolution predictions" value={number.format(summary.resolutionPredictions)} detail="Persisted estimates" icon={Clock3} accent="teal" /><MetricCard label="Average predicted duration" value={formatDuration(summary.averageResolutionHours ?? undefined)} detail={summary.averageResolutionHours == null ? 'Appears after your first result' : 'Successful estimates only'} icon={Gauge} accent="violet" /><MetricCard label="Available models" value={number.format(summary.availableModels)} detail="Health-checked services" icon={Sparkles} accent="amber" /></div>
     <div className="dashboard-grid"><Card title="Prediction activity" action={<Link className="card-link" to="/app/analytics">View analytics <ArrowRight size={14} /></Link>} className="activity-card"><div className="chart-wrap">{activity.daily.length ? <ResponsiveContainer width="100%" height={245}><AreaChart data={activity.daily} margin={{ top: 12, right: 12, left: -20, bottom: 0 }}><defs><linearGradient id="activityFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#73a7ff" stopOpacity={.35} /><stop offset="100%" stopColor="#73a7ff" stopOpacity={0} /></linearGradient></defs><CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--chart-grid)" /><XAxis dataKey="_id" tickFormatter={(value) => value.slice(5)} tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} /><YAxis allowDecimals={false} tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} /><Tooltip contentStyle={{ background: 'var(--surface-raised)', border: '1px solid var(--border-strong)', borderRadius: 12, color: 'var(--text)' }} labelStyle={{ color: 'var(--muted)' }} /><Area type="monotone" dataKey="count" name="Predictions" stroke="#73a7ff" fill="url(#activityFill)" strokeWidth={2.5} /></AreaChart></ResponsiveContainer> : <EmptyState title="Your signal line starts here" description="Run a prediction to create the first activity point." action={<Link className="button button-secondary" to="/app/resolution-time">Create prediction</Link>} />}</div></Card>
       <Card title="Model center" action={<Link className="card-link" to="/app/models">View all <ArrowRight size={14} /></Link>} className="model-summary-card"><div className="model-summary-list">{summary.models.map((model) => <div className="model-summary-row" key={model.id}><span className="model-symbol">{model.id === 'resolution-time' ? <Clock3 size={17} /> : <Sparkles size={17} />}</span><div><strong>{model.displayName}</strong><small>{model.description}</small></div><StatusPill status={model.status} /></div>)}</div></Card></div>

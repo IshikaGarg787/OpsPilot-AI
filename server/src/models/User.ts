@@ -6,6 +6,11 @@ const userSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
     username: { type: String, trim: true, lowercase: true, match: /^[a-z0-9][a-z0-9_-]{2,31}$/ },
     passwordHash: { type: String, required: true, select: false },
+    skills: { type: [String], default: [] },
+    availability: { type: String, enum: ['available', 'busy', 'unavailable'], default: 'available' },
+    setupTokenHash: { type: String, select: false },
+    setupTokenExpiresAt: { type: Date, select: false },
+    setupPending: { type: Boolean, default: false },
     // Keep the legacy value readable so accounts created before role selection remain usable.
     role: { type: String, enum: ['customer', 'it_team', 'admin', 'user'], default: 'user' },
     themePreference: { type: String, enum: ['light', 'dark', 'system'], default: 'dark' },
@@ -30,6 +35,7 @@ export function publicUser(user: UserDocument) {
     email: user.email,
     role: user.role === 'user' ? 'customer' : user.role,
     themePreference: user.themePreference,
+    ...(user.role === 'it_team' ? { skills: user.skills ?? [], availability: user.availability === 'unavailable' ? 'unavailable' : 'available' } : {}),
   };
 }
 

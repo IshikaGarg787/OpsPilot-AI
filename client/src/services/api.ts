@@ -24,11 +24,13 @@ export const api = {
     me: () => request<{ user: User }>('/auth/me'),
     login: (payload: { email: string; password: string; remember: boolean; expectedRole: 'customer' | 'it_team' | 'admin' }) => request<{ user: User }>('/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
     signup: (payload: { name: string; email: string; password: string; termsAccepted: boolean }) => request<{ user: User }>('/auth/signup', { method: 'POST', body: JSON.stringify(payload) }),
+    activateItAccount: (payload: { token: string; password: string }) => request<null>('/auth/activate-it-account', { method: 'POST', body: JSON.stringify(payload) }),
     logout: () => request<null>('/auth/logout', { method: 'POST' }),
   },
   users: {
     updateProfile: (name: string) => request<{ user: User }>('/users/me', { method: 'PATCH', body: JSON.stringify({ name }) }),
     updatePreferences: (themePreference: ThemePreference) => request<{ user: User }>('/users/me/preferences', { method: 'PATCH', body: JSON.stringify({ themePreference }) }),
+    updateItProfile: (payload: { skills: string[]; availability: 'available' | 'unavailable' }) => request<{ profile: { skills: string[]; availability: 'available' | 'unavailable' } }>('/users/me/it-profile', { method: 'PATCH', body: JSON.stringify(payload) }),
   },
   dashboard: {
     summary: () => request<DashboardSummary>('/dashboard/summary'),
@@ -52,13 +54,14 @@ export const api = {
     get: (id: string) => request<{ ticket: Ticket }>(`/tickets/${id}`),
     create: (payload: { subject: string; description: string; category: string; priority: string; project: string }) => request<{ ticket: Ticket }>('/tickets', { method: 'POST', body: JSON.stringify(payload) }),
     respond: (id: string, payload: { message: string; visibility: 'public' | 'internal'; resolutionNote?: string }) => request<{ ticket: Ticket }>(`/tickets/${id}/responses`, { method: 'POST', body: JSON.stringify(payload) }),
-    updateStatus: (id: string, payload: { status: string; resolutionNote?: string }) => request<{ ticket: Ticket }>(`/tickets/${id}/status`, { method: 'PATCH', body: JSON.stringify(payload) }),
+    updateStatus: (id: string, payload: { status: string; resolutionNote?: string; delayExplanation?: string }) => request<{ ticket: Ticket }>(`/tickets/${id}/status`, { method: 'PATCH', body: JSON.stringify(payload) }),
     assign: (id: string, assigneeId: string) => request<{ ticket: Ticket }>(`/tickets/${id}/assignment`, { method: 'PATCH', body: JSON.stringify({ assigneeId }) }),
     updatePriority: (id: string, priority: string, note: string) => request<{ ticket: Ticket }>(`/tickets/${id}/priority`, { method: 'PATCH', body: JSON.stringify({ priority, note }) }),
     decideRecommendation: (id: string, payload: { decision: 'approved' | 'rejected' | 'modified'; action?: 'priority_review' | 'standard_queue'; note: string }) => request<{ ticket: Ticket }>(`/tickets/${id}/recommendation-decision`, { method: 'POST', body: JSON.stringify(payload) }),
-    assignees: () => request<{ users: Array<{ id: string; name: string; email: string }> }>('/tickets/assignees'),
-    users: () => request<{ users: Array<{ id: string; name: string; email: string; role: string; createdAt: string }> }>('/users'),
+    assignees: () => request<{ users: Array<{ id: string; name: string; email: string; skills: string[]; activeTickets: number; availability: 'available' | 'busy' | 'unavailable' }> }>('/tickets/assignees'),
+    users: () => request<{ users: Array<{ id: string; name: string; email: string; role: string; createdAt: string; skills?: string[]; activeTickets?: number; availability?: 'available' | 'busy' | 'unavailable'; setupPending?: boolean }> }>('/users'),
     setRole: (userId: string, role: 'customer' | 'it_team') => request<{ user: User }>(`/users/${userId}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
+    createItUser: (payload: { name: string; email: string }) => request<{ user: { id: string; name: string; email: string; role: 'it_team' }; setupToken: string }>('/users/it-team', { method: 'POST', body: JSON.stringify(payload) }),
     uploadAttachment: async (ticketId: string, file: File) => {
       const response = await fetch(`${API_BASE_URL}/tickets/${ticketId}/attachments`, { method: 'POST', credentials: 'include', headers: { 'content-type': file.type, 'x-file-name': encodeURIComponent(file.name) }, body: file });
       const body = await response.json().catch(() => ({}));
