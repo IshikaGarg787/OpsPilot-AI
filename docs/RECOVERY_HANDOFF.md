@@ -5,8 +5,7 @@ Checkpoint updated: 2026-10-29 (local time, Asia/Calcutta)
 ## Repository checkpoint
 
 - Working branch: `recovery/resolve-bad-merge`.
-- Code checkpoint immediately before this handoff-document commit: `c7afb62d35dc1d2dbebb996abefd035e26bf64d3`.
-- Latest verified `origin/recovery/resolve-bad-merge` immediately before this handoff-document commit: same hash.
+- Latest local and verified `origin/recovery/resolve-bad-merge`: `d758d84295aca92f2d9f58dfdc7d7089c54746b2`.
 - Latest verified `origin/main`: `2c2fab0bd441294a8f5f150ac472ba7ce660fb4f`.
 - Local `main` remains at `08d593f276034f5025829d40ec3646e522377e4c`; it was not checked out or changed in this phase.
 - The untracked `README.conflict-backup.md` remains untouched and uncommitted.
@@ -68,6 +67,7 @@ Checkpoint updated: 2026-10-29 (local time, Asia/Calcutta)
 - `cf64120` — `fix(auth): reject unsupported account roles`; four server files; pushed and verified at recovery ref before the next unit.
 - `dd43e56` — `fix(client): align navigation with account roles`; three client files; pushed and verified.
 - `c7afb62` — `fix(client): clear expired sessions on unauthorized responses`; two client files; pushed and verified.
+- `d758d84` — `docs: record role recovery handoff`; one documentation file; pushed and verified against the live remote ref.
 
 Earlier recovery commits (`e90f7f5`, `d0bfd90`, `d34a67e`, `5dbc87d`, `30995b0`, `2c2fab0`) remain in history. No commits from this phase were pushed to `main`.
 
