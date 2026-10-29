@@ -119,8 +119,8 @@ export function SettingsPage() {
             >
               <Moon size={19} />
               <span>
-                <strong>Graphite Night</strong>
-                <small>Low-glare neutral dark surfaces</small>
+                <strong>Forest After Hours</strong>
+                <small>Deep evergreen surfaces with warm readable text</small>
               </span>
               {selectedTheme === 'dark' && <Check size={17} />}
             </button>
@@ -132,8 +132,8 @@ export function SettingsPage() {
             >
               <Sun size={19} />
               <span>
-                <strong>Operations Slate</strong>
-                <small>Recommended: calm warm neutrals with restrained steel accents</small>
+                <strong>Warm Operations</strong>
+                <small>Recommended: ivory surfaces with forest and clay accents</small>
               </span>
               {selectedTheme === 'light' && <Check size={17} />}
             </button>
@@ -145,8 +145,8 @@ export function SettingsPage() {
             >
               <Terminal size={19} />
               <span>
-                <strong>Deep Slate</strong>
-                <small>Cool charcoal with restrained blue accents</small>
+                <strong>Olive Night</strong>
+                <small>Deep olive surfaces with warm parchment text</small>
               </span>
               {selectedTheme === 'cyber' && <Check size={17} />}
             </button>
@@ -158,8 +158,8 @@ export function SettingsPage() {
             >
               <Sparkles size={19} />
               <span>
-                <strong>Field Green</strong>
-                <small>Muted green for service operations</small>
+                <strong>Forest Canopy</strong>
+                <small>Deep green surfaces with soft botanical accents</small>
               </span>
               {selectedTheme === 'aurora' && <Check size={17} />}
             </button>
