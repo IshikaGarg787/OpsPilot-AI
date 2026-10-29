@@ -59,7 +59,7 @@ export function CustomerTicketsTable({ pageSize = 10, showViewAll = false }: { p
           <td><Link className="customer-ticket-id" to={`/app/tickets/${ticket.id}`}>{ticket.ticketNumber}</Link></td>
           <td className="customer-ticket-subject">{ticket.subject}</td>
           <td>{ticket.category}</td>
-          <td>{ticket.priority === 'unknown' ? 'Pending admin review' : ticket.priority}</td>
+          <td>{ticket.priority === 'unknown' ? 'Pending admin review' : <span className={`priority-chip priority-${ticket.priority.toLowerCase().replaceAll(' ', '-')}`}>{ticket.priority}</span>}</td>
           <td>{ticket.assignedTo?.name ?? 'Not assigned yet'}</td>
           <td><span className={statusClass(ticket.status)}>{statusText(ticket.status)}</span></td>
           <td>{formatDate(ticket.createdAt)}</td>
