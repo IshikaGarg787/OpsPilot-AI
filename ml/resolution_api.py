@@ -16,7 +16,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
 
-from .resolution_predictor import DEFAULT_ARTIFACT_PATH, load_resolution_pipeline, predict_resolution_time
+from .resolution_predictor import DEFAULT_ARTIFACT_PATH, load_resolution_pipeline, predict_resolution_time_with_pipeline
 
 
 MODULE_DIR = Path(__file__).resolve().parent
@@ -58,6 +58,13 @@ class ModelRuntime:
     def available(self) -> bool:
         return self.pipeline is not None
 
+    def model_version(self) -> str:
+        explicit = self.metadata.get("model_version")
+        if explicit:
+            return str(explicit)
+        generated = self.metadata.get("generated_at_utc")
+        return f"resolution-time@{generated}" if generated else "resolution-time"
+
     def categories(self) -> dict[str, list[str]]:
         if self.pipeline is None:
             return {"issue_priority": [], "issue_type": [], "issue_proj": []}
@@ -92,6 +99,7 @@ class ModelRuntime:
             "model_id": "resolution-time",
             "display_name": "Resolution-Time Prediction",
             "model_name": self.metadata.get("selected_model"),
+            "model_version": self.model_version(),
             "artifact_generated_at": self.metadata.get("generated_at_utc"),
             "raw_input_columns": raw_inputs,
             "engineered_features": engineered,
@@ -116,7 +124,7 @@ class ModelRuntime:
         self.ensure_available()
         self.validate_categories(request)
         try:
-            result = predict_resolution_time(request.model_dump(), artifact_path=MODEL_PATH)
+            result = predict_resolution_time_with_pipeline(self.pipeline, request.model_dump())
         except (ValueError, TypeError) as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
         if not isinstance(result, dict) or not isinstance(result.get("duration"), (int, float)):
@@ -126,7 +134,7 @@ class ModelRuntime:
             "duration": float(result["duration"]),
             "unit": "hours",
             "prediction_type": "point_estimate",
-            "model_version": self.metadata.get("generated_at_utc"),
+            "model_version": self.model_version(),
             "artifact_generated_at": self.metadata.get("generated_at_utc"),
         }
 

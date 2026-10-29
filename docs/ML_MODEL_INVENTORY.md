@@ -31,7 +31,7 @@ This inventory distinguishes notebook experiments, exported artifacts, and capab
 - **Outputs:** daily forecast, heuristic lower/upper ranges, high-load flag and threshold, recent history, and provenance notes. The app and integrated API support 7/14-day choices.
 - **Offline evaluation:** Notebook/report describes walk-forward validation and a final test. That reported result is separate from a forecast made on arbitrary uploaded data. The live planning range is based on recent-series standard deviation, not calibrated residual quantiles, and is explicitly not labeled as a 90% interval. High-load threshold uses the last 365 non-Friday/Saturday dates, matching the dataset's Sunday–Thursday work week documented in the report.
 - **Readiness:** `/forecast/health` parses the configuration and imports XGBoost. It does not perform a model fit, so successful health is dependency/config readiness, not proof a forecast will succeed for every input history.
-- **Status:** Live CSV forecasting exists. Admin ticket triage accepts daily aggregates and saves an outlook on the linked ticket; true capacity inputs are not present.
+- **Status:** Live CSV forecasting exists. The standalone page uses the authenticated Express `POST /predictions/workload` proxy, while Admin ticket triage accepts daily aggregates and saves an outlook on the linked ticket. Both client flows filter ticket-level rows to `Ticket`, `Service`, and `HD Service` before aggregation; true capacity inputs are not present.
 
 ## Cross-model product contract
 

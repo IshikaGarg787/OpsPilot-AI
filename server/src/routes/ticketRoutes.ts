@@ -32,11 +32,13 @@ function addAudit(ticket: any, req: any, action: string, details?: string) {
   ticket.audit.push({ actorId: req.user!._id, actorName: req.user!.name, actorRole: normalizedRole(req.user!), action, details });
 }
 
-function assignedUserId(ticket: any): string | null {
-  const assigned = ticket.assignedTo;
+export function assignedUserId(ticket: any): string | null {
+  const assigned = ticket?.assignedTo;
   if (!assigned) return null;
   if (typeof assigned === 'string') return assigned;
-  return assigned._id?.toString?.() ?? assigned.toString();
+  const identifier = assigned._id ?? assigned.id ?? assigned;
+  const value = identifier?.toString?.();
+  return value && value !== '[object Object]' ? value : null;
 }
 
 async function getAccessibleTicket(id: string, user: NonNullable<Express.Request['user']>) {
@@ -44,7 +46,7 @@ async function getAccessibleTicket(id: string, user: NonNullable<Express.Request
   const ticket = await TicketModel.findById(id).populate('assignedTo', 'name email role');
   if (!ticket) throw new HttpError(404, 'Ticket not found.', 'TICKET_NOT_FOUND');
   const owner = ticket.ownerUserId.toString() === user._id.toString();
-  const assigned = ticket.assignedTo && typeof ticket.assignedTo !== 'string' && String((ticket.assignedTo as any)._id) === user._id.toString();
+  const assigned = assignedUserId(ticket) === user._id.toString();
   if (role === 'admin' || owner || (role === 'it_team' && assigned)) return ticket;
   throw new HttpError(404, 'Ticket not found.', 'TICKET_NOT_FOUND');
 }
@@ -92,7 +94,7 @@ router.post('/', requireRole('customer', 'it_team'), asyncHandler(async (req, re
   try {
     const estimate = resolutionSchema.parse(await predictResolution(modelInput));
     signals.resolutionHours = estimate.duration;
-    signals.resolutionModelVersion = estimate.model_version ?? estimate.artifact_generated_at;
+    signals.resolutionModelVersion = estimate.model_version;
   } catch {
     unavailable.push('resolution time');
   }
@@ -145,7 +147,7 @@ router.patch('/:ticketId/status', asyncHandler(async (req, res) => {
   const role = normalizedRole(req.user!);
   const ticket = await getAccessibleTicket(String(req.params.ticketId), req.user!);
   const input = ticketStatusSchema.parse(req.body);
-  const assigned = ticket.assignedTo?.toString() === req.user!._id.toString();
+  const assigned = assignedUserId(ticket) === req.user!._id.toString();
   if (role !== 'admin' && !(role === 'it_team' && assigned)) throw new HttpError(403, 'Only an admin or the assigned IT teammate can update ticket status.', 'TICKET_NOT_ASSIGNED');
   const previous = ticket.status;
   ticket.status = input.status;

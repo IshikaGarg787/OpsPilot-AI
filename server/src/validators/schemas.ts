@@ -38,6 +38,11 @@ export const triagePipelineSchema = z.object({
   }).strict()).min(120).max(6000),
 });
 
+export const workloadForecastSchema = z.object({
+  records: z.array(z.record(z.string(), z.unknown())).min(1).max(250000),
+  horizon: z.union([z.literal(7), z.literal(14)]),
+});
+
 export const profileSchema = z.object({ name: z.string().trim().min(2).max(100) });
 export const preferenceSchema = z.object({ themePreference: z.enum(['light', 'dark', 'system']) });
 export const ticketCreateSchema = z.object({

@@ -24,7 +24,7 @@ flowchart LR
   Risk --> Classifier[Saved delay-risk artifact]
 ```
 
-Ticket and integrated-pipeline requests go through Express; completed model outputs and ticket changes are stored in MongoDB. The standalone workload page still calls the main ML service directly. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/API.md`](docs/API.md).
+Ticket and integrated-pipeline requests go through Express; completed model outputs and ticket changes are stored in MongoDB. The standalone workload page also uses an authenticated Express proxy for its health check and forecast request. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/API.md`](docs/API.md).
 
 ## Quick start — Windows PowerShell
 

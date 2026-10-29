@@ -46,7 +46,9 @@ export const requireAuth: RequestHandler = async (req, _res, next) => {
     const session = await SessionModel.findOne({ tokenHash: hashToken(token), expiresAt: { $gt: new Date() } }).populate('userId');
     if (!session?.userId || typeof session.userId === 'string' || !(session.userId as { _id?: unknown })._id) throw new HttpError(401, 'Your session has expired.', 'SESSION_EXPIRED');
     const authenticatedUser = session.userId as unknown as UserDocument;
-    if (normalizedRole(authenticatedUser) === 'admin' && (authenticatedUser.email.trim().toLowerCase() !== ADMIN_OWNER_EMAIL || authenticatedUser.username !== ADMIN_OWNER_USERNAME)) throw new HttpError(403, 'This Admin account is not the configured workspace owner.', 'ADMIN_OWNER_REQUIRED');
+    const email = String(authenticatedUser.email ?? '').trim().toLowerCase();
+    const username = typeof authenticatedUser.username === 'string' ? authenticatedUser.username : undefined;
+    if (normalizedRole(authenticatedUser) === 'admin' && (email !== ADMIN_OWNER_EMAIL || username !== ADMIN_OWNER_USERNAME)) throw new HttpError(403, 'This Admin account is not the configured workspace owner.', 'ADMIN_OWNER_REQUIRED');
     req.user = authenticatedUser;
     req.sessionId = session._id.toString();
     void SessionModel.updateOne({ _id: session._id }, { $set: { lastUsedAt: new Date() } });
@@ -61,14 +63,14 @@ export function requireRole(...roles: AppRole[]): RequestHandler {
     if (!req.user) return next(new HttpError(401, 'Authentication is required.', 'AUTH_REQUIRED'));
     const role = normalizedRole(req.user);
     if (!roles.includes(role)) return next(new HttpError(403, 'Your workspace role cannot perform this action.', 'FORBIDDEN'));
-    if (role === 'admin' && (req.user.email.trim().toLowerCase() !== ADMIN_OWNER_EMAIL || req.user.username !== ADMIN_OWNER_USERNAME)) return next(new HttpError(403, 'This Admin account is not the configured workspace owner.', 'ADMIN_OWNER_REQUIRED'));
+    if (role === 'admin' && (String(req.user.email ?? '').trim().toLowerCase() !== ADMIN_OWNER_EMAIL || req.user.username !== ADMIN_OWNER_USERNAME)) return next(new HttpError(403, 'This Admin account is not the configured workspace owner.', 'ADMIN_OWNER_REQUIRED'));
     next();
   };
 }
 
 export const requireAdminOwner: RequestHandler = (req, _res, next) => {
   if (!req.user) return next(new HttpError(401, 'Authentication is required.', 'AUTH_REQUIRED'));
-  if (normalizedRole(req.user) !== 'admin' || req.user.email.trim().toLowerCase() !== ADMIN_OWNER_EMAIL || req.user.username !== ADMIN_OWNER_USERNAME) return next(new HttpError(403, 'This action is restricted to the provisioned workspace owner.', 'ADMIN_OWNER_REQUIRED'));
+  if (normalizedRole(req.user) !== 'admin' || String(req.user.email ?? '').trim().toLowerCase() !== ADMIN_OWNER_EMAIL || req.user.username !== ADMIN_OWNER_USERNAME) return next(new HttpError(403, 'This action is restricted to the provisioned workspace owner.', 'ADMIN_OWNER_REQUIRED'));
   next();
 };
 

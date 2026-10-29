@@ -69,12 +69,11 @@ This starts MongoDB on `127.0.0.1:27017` and waits for its health check. Data pe
 | `server/.env` | `SESSION_SECRET` | HMAC key for opaque session tokens; required in production. |
 | `server/.env` | `COOKIE_SECURE` | Set true when served over HTTPS. |
 | `server/.env` | `ML_ARTIFACT_DIR` | Resolution metrics location read by the API registry. |
-| `client/.env` | `VITE_API_BASE_URL` | Express API base URL. |
-| `client/.env` | `VITE_ML_BASE_URL` | FastAPI base URL used by workload upload. |
+| `client/.env` | `VITE_API_BASE_URL` | Express API base URL. The workload page now reaches FastAPI through this authenticated proxy. |
 | ML process | `ML_ARTIFACT_DIR` | Optional override for resolution artifacts; defaults to `ml/artifacts/resolution`. |
 | ML process | `ML_MODEL_PATH` | Optional override for the saved resolution pipeline path. |
 
-Only `VITE_*` values are exposed to the browser. Do not place secrets there. The workload API currently allows local development origins in its FastAPI CORS configuration; deployment origins need an explicit configuration change before deploying the forecast UI.
+Only `VITE_*` values are exposed to the browser. Do not place secrets there. The workload page calls the authenticated Express proxy, so the browser no longer needs the FastAPI service URL or its CORS allowlist for the forecast workflow.
 
 ## Start services
 
@@ -104,7 +103,7 @@ npm --prefix server run dev
 npm --prefix client run dev
 ```
 
-Visit `http://localhost:5173`. The integrated ticket decision requires all three model services and MongoDB. Standalone workload forecasting still uses only the main ML service and a refreshed CSV.
+Visit `http://localhost:5173`. The integrated ticket decision requires all three model services and MongoDB. Standalone workload forecasting uses a refreshed CSV, Express, and the main ML service; Express requires MongoDB for the authenticated session.
 
 Public signup cannot create the Admin account. To provision the fixed workspace owner, set the temporary `ADMIN_PROVISION_*` values in `server/.env` using the checklist in `docs/database-architecture.md`, run `npm --prefix server run admin:provision`, remove the initial password and confirmation values afterward, and sign in with the owner account.
 

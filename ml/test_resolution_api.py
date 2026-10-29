@@ -17,6 +17,13 @@ class ResolutionModelSmokeTest(unittest.TestCase):
         self.assertEqual(result["model_id"], "resolution-time")
         self.assertEqual(result["unit"], "hours")
         self.assertGreaterEqual(result["duration"], 0)
+        self.assertEqual(result["model_version"], runtime.model_version())
+
+    def test_model_version_is_not_the_artifact_timestamp(self):
+        version = runtime.model_version()
+        self.assertTrue(version)
+        self.assertNotEqual(version, runtime.metadata.get("generated_at_utc"))
+        self.assertIn("resolution-time", version)
 
     def test_unknown_category_is_rejected(self):
         with self.assertRaises(Exception):

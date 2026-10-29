@@ -1,11 +1,9 @@
-"""Workload Forecasting Inference Engine (Model C).
+"""DEPRECATED - not part of the running service.
 
-Loads the persisted XGBoost forecasting model artifact and generates
-live multi-day ticket volume forecasts with:
-- Daily arrival point estimates (tickets/day)
-- 90% empirical prediction intervals (lower_90, upper_90)
-- Weekday names and high-load anomaly flags
-- Weekly staffing totals (aggregated expected arrivals)
+The live workload path is ``POST /forecast/workload`` in ``ml/resolution_api.py``,
+which refits the tuned XGBoost ensemble from uploaded history. This module loads a
+pre-trained artifact and exposes 90% interval fields that the live route does not
+use. It is kept for historical reference only; do not wire it into an API route.
 """
 
 from __future__ import annotations

@@ -5,40 +5,9 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { Card, ErrorState, LoadingState, Notice, PageIntro } from '../components/ui';
 import { api, ApiError } from '../services/api';
 import type { ModelMetadata, TriageResult } from '../types';
+import { aggregateWorkloadHistory, parseCsv } from '../utils/workloadHistory';
 
 function localDateTime() { const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); return now.toISOString().slice(0, 16); }
-
-function parseCsv(text: string): Record<string, string>[] {
-  const rows: string[][] = []; let row: string[] = []; let cell = ''; let quoted = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (ch === '"' && quoted && text[i + 1] === '"') { cell += '"'; i++; }
-    else if (ch === '"') quoted = !quoted;
-    else if (ch === ',' && !quoted) { row.push(cell.trim()); cell = ''; }
-    else if ((ch === '\n' || ch === '\r') && !quoted) { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(cell.trim()); if (row.some(Boolean)) rows.push(row); row = []; cell = ''; }
-    else cell += ch;
-  }
-  row.push(cell.trim()); if (row.some(Boolean)) rows.push(row);
-  if (rows.length < 2) throw new Error('Choose a CSV with a header and ticket history.');
-  const headers = rows[0].map((h) => h.replace(/^\uFEFF/, '').trim());
-  return rows.slice(1).map((values) => Object.fromEntries(headers.map((header, i) => [header, values[i] ?? ''])));
-}
-
-function aggregateHistory(rows: Record<string, string>[]) {
-  const counts = new Map<string, number>();
-  for (const row of rows) {
-    if (row.date !== undefined && row.ticket_count !== undefined) {
-      const day = row.date.trim().slice(0, 10); const count = Number(row.ticket_count);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isInteger(count) || count < 0) throw new Error('Daily CSV rows need valid date and whole, non-negative ticket_count values.');
-      counts.set(day, (counts.get(day) ?? 0) + count);
-    } else if (row.issue_created) {
-      const time = Date.parse(row.issue_created);
-      if (!Number.isFinite(time)) throw new Error('Every ticket row must have a valid issue_created timestamp.');
-      const day = new Date(time).toISOString().slice(0, 10); counts.set(day, (counts.get(day) ?? 0) + 1);
-    } else throw new Error('CSV needs issue_created, or date and ticket_count columns.');
-  }
-  return [...counts].sort(([a], [b]) => a.localeCompare(b)).map(([date, ticket_count]) => ({ date, ticket_count }));
-}
 
 export function TriagePage() {
   const location = useLocation();
@@ -62,8 +31,7 @@ export function TriagePage() {
     if (!file) { setError('Upload refreshed ticket history to complete the workload step.'); return; }
     setBusy(true);
     try {
-      const records = aggregateHistory(parseCsv(await file.text()));
-      if (records.length < 120 || (Date.parse(records.at(-1)!.date) - Date.parse(records[0].date)) / 86400000 < 119) throw new Error('The history must cover at least 120 days.');
+      const records = aggregateWorkloadHistory(parseCsv(await file.text()));
       const response = await api.predictions.createTriage({ complaint, issue_created: new Date(created).toISOString(), issue_priority: priority, issue_type: issueType, issue_proj: project, horizon, workload_records: records, ...(linkedTicket ? { ticketId: linkedTicket.id } : {}) });
       setResult(response);
     } catch (err) { setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'The decision pipeline could not be completed.'); }
@@ -79,7 +47,7 @@ export function TriagePage() {
     <Notice variant="warning"><strong>Model input transparency.</strong> Complaint text is saved with the decision for human review. The trained models score the verified creation timestamp, priority, issue type, project, and historical ticket patterns; the current dataset has no complaint-text feature.</Notice>
     <form className="triage-form" onSubmit={submit}>
       <Card title={linkedTicket ? `1 · ${linkedTicket.ticketNumber} ticket context` : '1 · Capture the complaint'} className="triage-intake-card"><label className="field"><span>Customer complaint <i>*</i></span><textarea value={complaint} onChange={(e) => setComplaint(e.target.value)} required minLength={8} maxLength={3000} rows={5} readOnly={Boolean(linkedTicket)} placeholder="Describe what the customer is experiencing, in their own words…" /><small className="field-help">Stored alongside the result as decision context. Do not include passwords or payment details.</small></label><div className="form-grid-two"><label className="field"><span>Priority <i>*</i></span><select value={priority} onChange={(e) => setPriority(e.target.value)} required disabled={Boolean(linkedTicket)}>{metadata.fields.issue_priority.options.map((value) => <option key={value}>{value}</option>)}</select></label><label className="field"><span>Issue type <i>*</i></span><select value={issueType} onChange={(e) => setIssueType(e.target.value)} required disabled={Boolean(linkedTicket)}>{metadata.fields.issue_type.options.map((value) => <option key={value}>{value}</option>)}</select></label></div><div className="form-grid-two"><label className="field"><span>Project <i>*</i></span><select value={project} onChange={(e) => setProject(e.target.value)} required disabled={Boolean(linkedTicket)}>{metadata.fields.issue_proj.options.map((value) => <option key={value}>{value}</option>)}</select></label><label className="field"><span>Ticket created <i>*</i></span><input type="datetime-local" value={created} onChange={(e) => setCreated(e.target.value)} required readOnly={Boolean(linkedTicket)} /></label></div></Card>
-      <Card title="2 · Add refreshed operations history" className="triage-history-card"><p className="card-subtitle">The workload model needs at least 120 days. Upload ticket-level <code>issue_created</code> data or daily <code>date,ticket_count</code> totals. The browser reduces ticket rows to daily counts before sending them to the API.</p><label className="file-picker"><FileUp size={16} /><span>{file?.name ?? 'Choose history CSV'}</span><input type="file" accept=".csv,text/csv" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setError(''); setResult(null); }} /></label><label className="field triage-horizon"><span>Forecast horizon</span><select value={horizon} onChange={(e) => setHorizon(Number(e.target.value) as 7 | 14)}><option value={7}>Next 7 days</option><option value={14}>Next 14 days</option></select></label>{error && <div className="inline-error" role="alert"><AlertTriangle size={16} />{error}</div>}<button className="button button-primary triage-submit" type="submit" disabled={busy || !file || !complaint.trim() || !priority || !issueType || !project}>{busy ? <><span className="button-spinner" /> Running risk → resolution → workload…</> : <><Sparkles size={16} /> Run full decision pipeline</>}</button><small className="field-help">A result is saved only after all three model steps succeed.</small></Card>
+      <Card title="2 · Add refreshed operations history" className="triage-history-card"><p className="card-subtitle">The workload model needs at least 120 days. Upload ticket-level <code>issue_created</code> data or daily <code>date,ticket_count</code> totals. Only Ticket, Service, and HD Service issue types are counted; the browser reduces ticket rows to daily counts before sending them to the API.</p><label className="file-picker"><FileUp size={16} /><span>{file?.name ?? 'Choose history CSV'}</span><input type="file" accept=".csv,text/csv" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setError(''); setResult(null); }} /></label><label className="field triage-horizon"><span>Forecast horizon</span><select value={horizon} onChange={(e) => setHorizon(Number(e.target.value) as 7 | 14)}><option value={7}>Next 7 days</option><option value={14}>Next 14 days</option></select></label>{error && <div className="inline-error" role="alert"><AlertTriangle size={16} />{error}</div>}<button className="button button-primary triage-submit" type="submit" disabled={busy || !file || !complaint.trim() || !priority || !issueType || !project}>{busy ? <><span className="button-spinner" /> Running risk → resolution → workload…</> : <><Sparkles size={16} /> Run full decision pipeline</>}</button><small className="field-help">A result is saved only after all three model steps succeed.</small></Card>
     </form>
     {result && <section className="triage-results" aria-live="polite"><div className="triage-result-heading"><div><span className="eyebrow">Decision packet · saved to history</span><h2>Signals for this ticket</h2></div><span className="status-pill"><CheckCircle2 size={14} /> Complete</span></div><div className="triage-result-grid">
       <Card className="triage-result-card"><div className="triage-result-top"><ShieldAlert size={19} /><span>Delay risk</span><strong className={`risk-pill risk-${result.risk.risk_category}`}>{result.risk.risk_category} risk</strong></div><strong className="triage-result-number">{(result.risk.risk_probability * 100).toFixed(1)}<small>%</small></strong><p>{result.risk.flagged_for_review ? 'Flagged for review by the model’s high-recall decision threshold.' : 'Below the model’s high-recall review threshold.'}</p><small>Review threshold {(result.risk.decision_threshold * 100).toFixed(1)}% · target is over {result.risk.target_threshold_hours / 24} days</small></Card>

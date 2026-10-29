@@ -52,6 +52,40 @@ export interface Prediction {
   createdAt: string;
 }
 
+export interface WorkloadForecastRow {
+  date: string;
+  weekday: string;
+  forecast: number;
+  planning_low: number;
+  planning_high: number;
+  high_load_threshold: number;
+  high_load_flag: boolean;
+}
+
+export interface WorkloadForecastResult {
+  model_id: string;
+  model_name: string;
+  mode: string;
+  generated_at: string;
+  history_start: string;
+  history_end: string;
+  history_days: number;
+  ticket_total: number;
+  horizon: 7 | 14;
+  forecast: WorkloadForecastRow[];
+  recent_history: Array<{ date: string; ticket_count: number }>;
+  notes: string[];
+}
+
+export interface WorkloadForecastHealth {
+  available: boolean;
+  status?: string;
+  service?: string;
+  message?: string;
+  configurations_available?: number;
+  reason?: string;
+}
+
 export interface TriageResult {
   prediction: Prediction;
   risk: { risk_probability: number; risk_category: 'low' | 'medium' | 'high'; flagged_for_review: boolean; decision_threshold: number; target_threshold_hours: number; model_version: string; notes?: string[]; explanation?: { summary: string; historical_evidence: Array<{ factor: string; value: string; historical_tickets: number; historical_delay_rate: number }>; evidence_cutoff: string; interpretation: string } };
@@ -99,6 +133,7 @@ export interface ModelMetadata {
   model_id: string;
   display_name: string;
   model_name?: string;
+  model_version?: string;
   artifact_generated_at?: string;
   raw_input_columns: string[];
   engineered_features: string[];

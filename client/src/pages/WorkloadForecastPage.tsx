@@ -1,34 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Activity, AlertTriangle, CalendarClock, FileUp, RefreshCw, TrendingUp } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-
-const ML_URL = (import.meta.env.VITE_ML_BASE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
-type ForecastRow = { date: string; weekday: string; forecast: number; planning_low: number; planning_high: number; high_load_threshold: number; high_load_flag: boolean };
-type ForecastResult = { model_id: string; model_name: string; mode: string; generated_at: string; history_start: string; history_end: string; history_days: number; ticket_total: number; horizon: number; forecast: ForecastRow[]; recent_history: {date:string;ticket_count:number}[]; notes: string[] };
-
-function parseCsv(text: string): Record<string, string>[] {
-  const rows: string[][] = [];
-  let row: string[] = [], cell = '', quoted = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (ch === '"' && quoted && text[i + 1] === '"') { cell += '"'; i++; }
-    else if (ch === '"') quoted = !quoted;
-    else if (ch === ',' && !quoted) { row.push(cell.trim()); cell = ''; }
-    else if ((ch === '\n' || ch === '\r') && !quoted) { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(cell.trim()); if (row.some(v => v !== '')) rows.push(row); row = []; cell = ''; }
-    else cell += ch;
-  }
-  row.push(cell.trim()); if (row.some(v => v !== '')) rows.push(row);
-  if (rows.length < 2) throw new Error('CSV must include a header and data rows.');
-  const headers = rows[0].map(h => h.replace(/^\uFEFF/, '').trim());
-  return rows.slice(1).map(values => Object.fromEntries(headers.map((h, i) => [h, values[i] ?? ''])));
-}
+import { api, ApiError } from '../services/api';
+import type { WorkloadForecastResult } from '../types';
+import { aggregateWorkloadHistory, parseCsv } from '../utils/workloadHistory';
 
 export function WorkloadForecastPage() {
   const [file, setFile] = useState<File | null>(null);
-  const [horizon, setHorizon] = useState(7);
+  const [horizon, setHorizon] = useState<7 | 14>(7);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [result, setResult] = useState<ForecastResult | null>(null);
+  const [result, setResult] = useState<WorkloadForecastResult | null>(null);
   const [serviceStatus, setServiceStatus] = useState<'checking' | 'available' | 'unavailable'>('checking');
   const [serviceError, setServiceError] = useState('');
   const chartData = useMemo(() => result?.forecast.map(r => ({ ...r, day: new Date(`${r.date}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) })) ?? [], [result]);
@@ -36,9 +18,8 @@ export function WorkloadForecastPage() {
   const checkService = useCallback(async () => {
     setServiceStatus('checking'); setServiceError('');
     try {
-      const response = await fetch(`${ML_URL}/forecast/health`, { signal: AbortSignal.timeout(4000) });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok || body.status !== 'available') throw new Error('Forecast service is not ready.');
+      const health = await api.predictions.workloadHealth();
+      if (!health.available || health.status !== 'available') throw new Error('Forecast service is not ready.');
       setServiceStatus('available');
     } catch {
       setServiceStatus('unavailable');
@@ -53,22 +34,19 @@ export function WorkloadForecastPage() {
     if (serviceStatus !== 'available') { setError(serviceError || 'Forecast service is not ready yet.'); return; }
     setLoading(true); setError(''); setResult(null);
     try {
-      const records = parseCsv(await file.text());
-      if (records.length < 120) throw new Error('Upload at least 120 ticket rows, or a daily aggregate with at least 120 dates.');
-      const response = await fetch(`${ML_URL}/forecast/workload`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ records, horizon }) });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.detail ?? 'Forecast service request failed.');
-      setResult(body as ForecastResult);
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not run the forecast.'); }
+      const records = aggregateWorkloadHistory(parseCsv(await file.text()));
+      const response = await api.predictions.forecastWorkload({ records, horizon });
+      setResult(response);
+    } catch (e) { setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : 'Could not run the forecast.'); }
     finally { setLoading(false); }
   }
 
   return <div className="page-stack workload-page">
     <div className="page-intro"><div><span className="eyebrow">LIVE DATA · MODEL 03</span><h1>Workload forecasting</h1><p>Upload refreshed ticket records to refit the forecasting ensemble and estimate the next 7 or 14 days.</p></div><span className="status-pill" role="status" aria-live="polite"><span className="pulse-dot"/>{serviceStatus === 'checking' ? ' Checking service' : serviceStatus === 'available' ? ' Ready to forecast' : ' Service unavailable'}</span></div>
     <div className="forecast-upload-card">
-      <div className="forecast-upload-icon"><FileUp size={23}/></div><div className="forecast-upload-copy"><h2>Use your latest ticket data</h2><p>Ticket-level CSV: <code>issue_created</code> (optionally <code>issue_type</code>). Or daily aggregate CSV: <code>date,ticket_count</code>. At least 120 days of history required.</p>
+      <div className="forecast-upload-icon"><FileUp size={23}/></div><div className="forecast-upload-copy"><h2>Use your latest ticket data</h2><p>Ticket-level CSV: <code>issue_created</code> (optionally <code>issue_type</code>). Or daily aggregate CSV: <code>date,ticket_count</code>. Only Ticket, Service, and HD Service issue types are counted. At least 120 days of history required.</p>
         <label className="file-picker"> <FileUp size={16}/><span>{file ? file.name : 'Choose CSV file'}</span><input type="file" accept=".csv,text/csv" onChange={e => { setFile(e.target.files?.[0] ?? null); setError(''); setResult(null); }}/></label>
-      </div><div className="forecast-controls"><label>Horizon<select value={horizon} onChange={e => setHorizon(Number(e.target.value))}><option value={7}>Next 7 days</option><option value={14}>Next 14 days</option></select></label><button className="primary-button" onClick={runForecast} disabled={loading || !file || serviceStatus !== 'available'}>{loading ? <><RefreshCw className="spin" size={16}/> Forecasting…</> : <><TrendingUp size={16}/> Generate forecast</>}</button></div>
+      </div><div className="forecast-controls"><label>Horizon<select value={horizon} onChange={e => setHorizon(Number(e.target.value) as 7 | 14)}><option value={7}>Next 7 days</option><option value={14}>Next 14 days</option></select></label><button className="primary-button" onClick={runForecast} disabled={loading || !file || serviceStatus !== 'available'}>{loading ? <><RefreshCw className="spin" size={16}/> Forecasting…</> : <><TrendingUp size={16}/> Generate forecast</>}</button></div>
     </div>
     {serviceStatus === 'unavailable' && <div className="inline-error" role="alert"><AlertTriangle size={17}/><span>{serviceError}</span><button type="button" className="button button-secondary" onClick={() => void checkService()}>Retry connection</button></div>}
     {error && <div className="inline-error"><AlertTriangle size={17}/>{error}</div>}
