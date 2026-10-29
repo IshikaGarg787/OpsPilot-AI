@@ -12,6 +12,7 @@ import { backfillSavedTicketPredictions } from '../services/ticketPredictionHist
 import { TicketModel } from '../models/Ticket.js';
 import { UserModel } from '../models/User.js';
 import { calculateTicketSlaForRecord } from '../services/slaPolicy.js';
+import { customerPredictionFilter } from '../services/customerPredictions.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -258,8 +259,10 @@ router.get('/', asyncHandler(async (req, res) => {
   requireDatabase();
   await backfillSavedTicketPredictions(req.user!);
   const query = listQuerySchema.parse(req.query);
-  const filter: Record<string, unknown> = normalizedRole(req.user!) === 'admin' ? {} : { userId: req.user!._id };
-  if (query.modelId) filter.modelId = query.modelId;
+  const role = normalizedRole(req.user!);
+  const customer = role === 'customer';
+  const filter: Record<string, unknown> = role === 'admin' ? {} : customer ? customerPredictionFilter(req.user!._id) : { userId: req.user!._id };
+  if (query.modelId && (!customer || query.modelId === 'resolution-time')) filter.modelId = query.modelId;
   if (query.from || query.to) filter.createdAt = { ...(query.from ? { $gte: new Date(query.from) } : {}), ...(query.to ? { $lte: new Date(query.to) } : {}) };
   const [items, total] = await Promise.all([
     PredictionModel.find(filter).sort({ createdAt: -1 }).skip((query.page - 1) * query.pageSize).limit(query.pageSize).lean(),
@@ -270,7 +273,13 @@ router.get('/', asyncHandler(async (req, res) => {
 
 router.get('/:id', asyncHandler(async (req, res) => {
   requireDatabase();
-  const prediction = await PredictionModel.findOne({ _id: req.params.id, ...(normalizedRole(req.user!) === 'admin' ? {} : { userId: req.user!._id }) }).lean();
+  const role = normalizedRole(req.user!);
+  const filter = role === 'admin'
+    ? { _id: req.params.id }
+    : role === 'customer'
+      ? { _id: req.params.id, ...customerPredictionFilter(req.user!._id) }
+      : { _id: req.params.id, userId: req.user!._id };
+  const prediction = await PredictionModel.findOne(filter).lean();
   if (!prediction) throw new HttpError(404, 'Prediction not found.', 'PREDICTION_NOT_FOUND');
   res.json({ success: true, data: { prediction: serialize(prediction) } });
 }));
