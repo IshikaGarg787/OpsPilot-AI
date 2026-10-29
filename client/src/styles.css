@@ -300,6 +300,15 @@ p { line-height: 1.65; }
 .chart-legend { font-size:12px; color:var(--muted, #737b8d); white-space:nowrap; }
 .chart-legend i { width:9px; height:9px; border-radius:3px; background:#6478e8; }
 .forecast-chart { width:100%; height:300px; margin-top:18px; }
+.workload-history-panel .forecast-chart { height:220px; }
+.history-preview-footer { border-top:1px solid var(--border); color:var(--muted); display:flex; flex-wrap:wrap; font-size:12px; gap:8px 20px; justify-content:space-between; padding-top:12px; }
+.history-preview-footer span:first-child { color:var(--text); font-weight:700; }
+.history-preview-empty { align-items:center; background:var(--surface-raised); border-radius:12px; color:var(--muted); display:flex; font-size:13px; gap:10px; justify-content:center; min-height:120px; padding:20px; text-align:center; }
+.history-preview-empty svg { color:var(--blue); flex:0 0 auto; }
+.workload-page .chart-legend { align-items:center; display:flex; flex-wrap:wrap; gap:12px; }
+.workload-page .chart-legend span { align-items:center; display:inline-flex; gap:7px; }
+.workload-page .chart-legend .forecast-legend-line { background:#6478e8; border-radius:2px; height:3px; width:14px; }
+.workload-page .chart-legend .forecast-legend-band { background:rgba(100,120,232,.2); border:1px solid rgba(100,120,232,.4); border-radius:3px; height:10px; width:14px; }
 .table-wrap { width:100%; overflow:auto; margin-top:15px; }
 .data-table { width:100%; border-collapse:collapse; text-align:left; font-size:13px; }
 .data-table th { padding:12px 14px; color:var(--muted, #737b8d); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.04em; background:var(--subtle-surface, #f8f9fc); }
@@ -803,3 +812,63 @@ html, body, #root { max-width: 100%; min-width: 0; overflow-x: clip; }
 .action-card-admin { border-color: var(--border-strong); }
 .risk-breakdown-card { background: var(--surface-raised); }
 .risk-evidence-pill { background: color-mix(in srgb, var(--blue) 5%, var(--surface)); }
+
+/* Admin-only operations dashboard additions. */
+.ops-dashboard-header { border-color: color-mix(in srgb, var(--blue) 24%, var(--border)); }
+.ops-metric-button { background: none; border: 0; color: inherit; cursor: pointer; min-width: 0; padding: 0; text-align: left; }
+.ops-metric-button:focus-visible { border-radius: 12px; outline: 3px solid color-mix(in srgb, var(--blue) 60%, transparent); outline-offset: 3px; }
+.ops-metric-button:hover .metric-card { transform: translateY(-2px); }
+.ops-attention-search { margin-bottom: 12px; max-width: 360px; }
+.ops-dashboard-controls { align-items: end; display: flex; flex-wrap: wrap; gap: 12px; }
+.ops-dashboard-controls > .field { flex: 0 1 170px; }
+.ops-dashboard-controls > .field-help { flex: 1 1 260px; margin: 0 12px 8px 0; }
+.ops-metric-caption { color: var(--muted); font-size: .8rem; font-weight: 700; margin: -4px 0 -8px; }
+.ops-chart-grid > .card { min-width: 0; }
+.analytics-page .analytics-grid,
+.admin-operations-dashboard .ops-chart-grid {
+  align-items: stretch;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+.admin-operations-dashboard .ops-chart-grid > #sla-trend,
+.admin-operations-dashboard .ops-chart-grid > .card { min-width: 0; }
+.ops-overview-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ops-overview-footer { align-items: center; color: var(--muted); display: flex; flex-wrap: wrap; font-size: .78rem; gap: 12px; justify-content: space-between; }
+.ops-pagination { align-items: center; border-top: 1px solid var(--border); color: var(--muted); display: flex; flex-wrap: wrap; font-size: .74rem; gap: 12px; justify-content: space-between; margin-top: 14px; padding-top: 12px; }
+.ops-pagination > div { align-items: center; display: flex; gap: 10px; }
+.ops-pagination .button { font-size: .7rem; min-height: 34px; padding: 0 11px; }
+@media (max-width: 899px) {
+  .analytics-page .analytics-grid,
+  .admin-operations-dashboard .ops-chart-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  .ops-overview-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .ops-overview-metrics { grid-template-columns: minmax(0, 1fr); }
+}
+.ops-legend, .ops-workload-overdue { color: var(--muted); display: flex; flex-wrap: wrap; font-size: .75rem; gap: 10px 16px; margin-top: 8px; }
+.ops-legend span, .ops-risk-content li { align-items: center; display: inline-flex; gap: 7px; text-transform: capitalize; }
+.ops-legend i, .ops-risk-content li i { border-radius: 50%; display: inline-block; height: 9px; width: 9px; }
+.ops-risk-content { align-items: center; display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+.ops-risk-content ul { color: var(--muted); display: grid; gap: 10px; list-style: none; margin: 0; padding: 0 14px; text-transform: capitalize; }
+.ops-risk-content li { justify-content: space-between; min-width: 100px; }
+.ops-risk-content li strong { color: var(--text); margin-left: 8px; }
+.ops-event-list { display: grid; }
+.ops-event { align-items: center; border-bottom: 1px solid var(--border); display: grid; gap: 12px; grid-template-columns: 10px minmax(0, 1fr) auto; padding: 12px 2px; }
+.ops-event:last-child { border-bottom: 0; }
+.ops-event-dot { border-radius: 50%; height: 8px; width: 8px; }
+.ops-event > div { display: grid; gap: 4px; min-width: 0; }
+.ops-event small, .ops-event time { color: var(--muted); font-size: .76rem; }
+.ops-event time { text-align: right; }
+.admin-operations-dashboard .data-table a { color: var(--blue-strong); }
+.ops-filter-chip { align-items: center; background: var(--surface-raised); border: 1px solid var(--border); border-radius: 999px; color: var(--muted); display: inline-flex; font-size: .76rem; gap: 8px; margin-bottom: 10px; padding: 5px 10px; }
+.ops-filter-chip button { background: none; border: 0; color: var(--blue-strong); cursor: pointer; font: inherit; font-weight: 700; }
+@media (max-width: 700px) {
+  .ops-dashboard-controls > .field { flex: 1 1 130px; }
+  .ops-risk-content { grid-template-columns: minmax(0, 1fr); }
+  .ops-risk-content ul { grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 0 8px 12px; }
+  .ops-event { align-items: start; grid-template-columns: 10px minmax(0, 1fr); }
+  .ops-event time { grid-column: 2; text-align: left; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .admin-operations-dashboard .chart-wrap { animation: ops-chart-enter .35s ease-out both; }
+  @keyframes ops-chart-enter { from { opacity: .65; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+}

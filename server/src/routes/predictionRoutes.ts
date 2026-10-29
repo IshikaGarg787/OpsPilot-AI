@@ -119,10 +119,10 @@ router.get('/workload/history', requireRole('admin'), asyncHandler(async (_req, 
   const today = new Date();
   const end = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - 1));
   const firstObserved = daily.length ? new Date(`${daily[0]._id}T00:00:00Z`) : null;
-  const start = firstObserved && firstObserved <= end ? firstObserved : new Date(end.getTime() - 119 * 86400000);
+  const start = firstObserved && firstObserved <= end ? firstObserved : null;
   const dailyCounts = new Map(daily.map((row: any) => [row._id, row.ticket_count]));
   const records: Array<{ date: string; ticket_count: number }> = [];
-  for (let time = start.getTime(); daily.length && time <= end.getTime(); time += 86400000) {
+  for (let time = start?.getTime(); time !== undefined && time <= end.getTime(); time += 86400000) {
     const date = new Date(time).toISOString().slice(0, 10);
     records.push({ date, ticket_count: dailyCounts.get(date) ?? 0 });
   }

@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import type { DashboardActivity, DashboardSummary, Ticket } from '../types';
 import { CustomerTicketsTable } from '../components/CustomerTicketsTable';
 import type { CustomerDashboardData } from '../types';
+import { AdminOperationsDashboard } from '../components/AdminOperationsDashboard';
 
 const number = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
 const formatDuration = (hours?: number) => hours == null ? '—' : hours >= 24 ? `${number.format(hours / 24)}d` : `${number.format(hours)}h`;
@@ -77,10 +78,11 @@ function ItTeamDashboardPage() {
 function OperationalDashboardPage() {
   const { user } = useAuth();
   const [summary, setSummary] = useState<DashboardSummary | null>(null); const [activity, setActivity] = useState<DashboardActivity | null>(null); const [error, setError] = useState('');
-  useEffect(() => { Promise.all([api.dashboard.summary(), api.dashboard.activity()]).then(([nextSummary, nextActivity]) => { setSummary(nextSummary); setActivity(nextActivity); }).catch((err) => setError(err instanceof Error ? err.message : 'Dashboard data is unavailable.')); }, []);
+  useEffect(() => { if (user?.role === 'admin') return; Promise.all([api.dashboard.summary(), api.dashboard.activity()]).then(([nextSummary, nextActivity]) => { setSummary(nextSummary); setActivity(nextActivity); }).catch((err) => setError(err instanceof Error ? err.message : 'Dashboard data is unavailable.')); }, [user?.role]);
+  if (user?.role === 'admin') return <div className="page-stack"><PageIntro eyebrow="Command center" title="Overview" description="Your most important live operational signals and tickets needing attention." action={<Link className="button button-primary" to="/app/analytics">Open Analytics <ArrowRight size={16} /></Link>} /><AdminOperationsDashboard mode="overview" /></div>;
   if (error) return <><PageIntro eyebrow="Command center" title="Overview" description="A focused view of your operational intelligence." /><ErrorState message={error} onRetry={() => window.location.reload()} /></>;
   if (!summary || !activity) return <><PageIntro eyebrow="Command center" title="Overview" description="A focused view of your operational intelligence." /><LoadingState /></>;
-  const dashboardAction = user?.role === 'admin' ? <Link className="button button-primary" to="/app/triage"><BrainCircuit size={16} /> Review ticket decisions</Link> : <Link className="button button-primary" to="/app/tickets/new"><TicketIcon size={16} /> Raise a ticket</Link>;
+  const dashboardAction = <Link className="button button-primary" to="/app/tickets/new"><TicketIcon size={16} /> Raise a ticket</Link>;
   return <div className="page-stack"><PageIntro eyebrow="Command center" title="Overview" description="Your tickets and model signals, at a glance." action={dashboardAction} />
     <MyAssignedWork /><OperationsDashboard />
     <div className="metrics-grid"><MetricCard label="Model runs" value={number.format(summary.totalPredictions)} detail="Saved to prediction history" icon={BrainCircuit} accent="blue" /><MetricCard label="Delay-risk scores" value={number.format(summary.delayRiskPredictions)} detail="Tickets reviewed for delay risk" icon={ShieldAlert} accent="amber" /><MetricCard label="Resolution estimates" value={number.format(summary.resolutionPredictions)} detail={summary.averageResolutionHours == null ? 'No successful estimate yet' : `Average ${formatDuration(summary.averageResolutionHours)}`} icon={Clock3} accent="teal" /><MetricCard label="Workload forecasts" value={number.format(summary.workloadForecasts)} detail="Saved incoming-volume outlooks" icon={Gauge} accent="violet" /><MetricCard label="Available models" value={number.format(summary.availableModels)} detail="Health-checked services" icon={Sparkles} accent="amber" /></div>

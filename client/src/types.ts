@@ -104,8 +104,18 @@ export interface TicketSlaCalculation { status: 'not_applicable' | 'on_track' | 
 export interface TicketSla { policy: { policyId: string; version: string }; response: TicketSlaCalculation; resolution: TicketSlaCalculation }
 export interface CapacityPlan { _id: string; horizon: 7 | 14; expectedDemand: number; baselineCapacityPerDay: number; proposedCapacityPerDay: number; baselineUncovered: number; proposedUncovered: number; coverageImprovement: number; baselinePeakBacklog: number; proposedPeakBacklog: number; baselineBacklogAtHorizon: number; proposedBacklogAtHorizon: number; baselineClearanceDays: number | null; proposedClearanceDays: number | null; baselineOverloadedDays: number; proposedOverloadedDays: number; note: string; createdAt: string }
 export interface SlaPolicy { _id: string; name: string; priority: string; firstResponseMinutes: number; resolutionMinutes: number; enabled: boolean; createdAt: string; updatedAt: string }
-export interface SlaEvent { _id: string; kind: string; ticketNumber?: string | null; slaType?: string | null; threshold?: number | null; message: string; createdAt: string }
+export interface SlaEvent { _id: string; kind: string; ticketId?: string | null; ticketNumber?: string | null; slaType?: string | null; threshold?: number | null; message: string; createdAt: string }
 export interface SlaOverview { metrics: { compliancePercent: number | null; approaching: number; breached: number; met: number; averageFirstResponseHours: number | null; averageResolutionHours: number | null }; tickets: Array<{ _id: string; ticketNumber: string; subject: string; priority: string; status: TicketStatus; assignedTo?: { name: string } | null; aiSignals?: { delayRiskCategory?: 'low' | 'medium' | 'high'; delayRiskProbability?: number }; slaSnapshot?: { policyName?: string; firstResponseDeadlineAt?: string; resolutionDeadlineAt?: string; firstResponseStatus?: string; resolutionStatus?: string } }>; events: SlaEvent[] }
+export interface OperationsDashboardData {
+  summary: { open: number; compliancePercent: number | null; activeBreaches: number; atRisk: number; highRisk: number; averageResolutionHours: number | null };
+  priorityStatus: Array<{ _id: { priority: string; status: string }; count: number }>;
+  riskDistribution: Array<{ _id: 'low' | 'medium' | 'high'; count: number }>;
+  workload: Array<{ assigneeId: string | null; name: string; count: number; overdue: number }>;
+  attention: Array<{ _id: string; ticketNumber: string; subject: string; priority: string; category: string; status: TicketStatus; assignee: string | null; firstResponseDeadlineAt?: string; resolutionDeadlineAt?: string; firstResponseStatus?: string; resolutionStatus?: string; delayRiskCategory?: 'low' | 'medium' | 'high'; delayRiskProbability?: number; updatedAt: string }>;
+  events: SlaEvent[];
+  trend: Array<{ date: string; responseEligible: number; responseMet: number; resolutionEligible: number; resolutionMet: number; eligible: number; met: number; compliancePercent: number }>;
+  filterOptions: { priorities: string[]; categories: string[] };
+}
 
 export type TicketStatus = 'open' | 'triaged' | 'assigned' | 'in_progress' | 'waiting_customer' | 'resolved' | 'closed';
 export interface Ticket {

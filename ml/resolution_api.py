@@ -296,7 +296,7 @@ def _live_xgb_forecast(daily, horizon):
     residual_spread = float(max(daily.tail(90).std() * 1.645, 1.0))
     residual_low, residual_high = residual_spread, residual_spread
     rows = []
-    threshold = float(daily[~daily.index.dayofweek.isin([4, 5])].tail(365).quantile(.75))
+    threshold = _high_load_threshold(daily)
     for dt, value in zip(future_idx, mean_forecast):
         rows.append({
             "date": dt.date().isoformat(), "weekday": dt.day_name(),
@@ -304,9 +304,21 @@ def _live_xgb_forecast(daily, horizon):
             "planning_low": round(max(0.0, float(value) - residual_low), 2),
             "planning_high": round(float(value) + residual_high, 2),
             "high_load_threshold": round(threshold, 2),
-            "high_load_flag": bool(value >= threshold),
+            "high_load_flag": _is_high_load(float(value), threshold),
         })
     return rows
+
+
+def _high_load_threshold(daily):
+    """Use positive weekday demand so zero-heavy histories do not flag every day."""
+    weekday_counts = daily[~daily.index.day_of_week.isin([4, 5])].tail(365)
+    positive_counts = weekday_counts[weekday_counts > 0]
+    return float(positive_counts.quantile(.75)) if not positive_counts.empty else 0.0
+
+
+def _is_high_load(forecast, threshold):
+    # Match the UI wording: a forecast must be above (not merely equal to) the threshold.
+    return bool(threshold > 0 and forecast > threshold)
 
 
 @app.get("/forecast/health")

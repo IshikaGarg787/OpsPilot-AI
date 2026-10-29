@@ -1,4 +1,4 @@
-import type { CustomerDashboardData, CustomerTicketPage, DashboardActivity, DashboardSummary, ModelInfo, ModelMetadata, PaginatedPredictions, Prediction, SlaEvent, SlaOverview, SlaPolicy, ThemePreference, Ticket, TicketStatus, TriageResult, User, WorkloadForecastHealth, WorkloadForecastResult } from '../types';
+import type { CustomerDashboardData, CustomerTicketPage, DashboardActivity, DashboardSummary, ModelInfo, ModelMetadata, OperationsDashboardData, PaginatedPredictions, Prediction, SlaEvent, SlaOverview, SlaPolicy, ThemePreference, Ticket, TicketStatus, TriageResult, User, WorkloadForecastHealth, WorkloadForecastResult } from '../types';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000/api/v1').replace(/\/$/, '');
 
@@ -95,6 +95,12 @@ export const api = {
     createPolicy: (payload: Omit<SlaPolicy, '_id' | 'createdAt' | 'updatedAt'>) => request<{ policy: SlaPolicy }>('/sla/policies', { method: 'POST', body: JSON.stringify(payload) }),
     updatePolicy: (id: string, payload: Partial<Omit<SlaPolicy, '_id' | 'createdAt' | 'updatedAt'>>) => request<{ policy: SlaPolicy }>(`/sla/policies/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
     overview: () => request<SlaOverview>('/sla/overview'),
+    operations: (query: { range: 7 | 30 | 90; priority?: string; category?: string }) => {
+      const params = new URLSearchParams({ range: String(query.range) });
+      if (query.priority) params.set('priority', query.priority);
+      if (query.category) params.set('category', query.category);
+      return request<OperationsDashboardData>(`/sla/operations?${params.toString()}`);
+    },
     events: () => request<{ events: SlaEvent[] }>('/sla/events'),
   },
 };
