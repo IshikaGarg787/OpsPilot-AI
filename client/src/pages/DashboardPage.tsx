@@ -1,4 +1,4 @@
-import { ArrowRight, Bell, BrainCircuit, CheckCircle2, Clock3, Gauge, History, Plus, ShieldAlert, Sparkles, Ticket as TicketIcon } from 'lucide-react';
+import { ArrowRight, Bell, BrainCircuit, CheckCircle2, Clock3, Gauge, Plus, ShieldAlert, Sparkles, Ticket as TicketIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -71,7 +71,6 @@ function ItTeamDashboardPage() {
     {error && <ErrorState message={error} onRetry={() => window.location.reload()} />}
     {!tickets && !error && <LoadingState label="Loading your assignments" />}
     {tickets && <><div className="metrics-grid"><MetricCard label="Assigned to me" value={number.format(assigned.length)} detail="Tickets in your queue" icon={TicketIcon} accent="blue" /><MetricCard label="In progress" value={number.format(active.filter((ticket) => ticket.status === 'in_progress').length)} detail="Active work" icon={Gauge} accent="violet" /><MetricCard label="Waiting on customer" value={number.format(waiting.length)} detail="Next step needs a reply" icon={Clock3} accent="amber" /><MetricCard label="Completed" value={number.format(resolved.length)} detail="Resolved or closed" icon={CheckCircle2} accent="teal" /></div><MyAssignedWork /></>}
-    <Card title="Team resources"><div className="role-resource-links"><Link to="/app/tickets/new"><Plus size={16} /> Report an internal issue <ArrowRight size={15} /></Link><Link to="/app/history"><History size={16} /> Review my AI estimates <ArrowRight size={15} /></Link></div></Card>
     <SupportChatWidget />
   </div>;
 }

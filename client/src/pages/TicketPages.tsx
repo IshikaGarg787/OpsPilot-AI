@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { AlertTriangle, ArrowRight, CheckCircle2, Clock3, Download, FileUp, MessageSquareText, Paperclip, Plus, RefreshCw, ShieldAlert, Sparkles, Ticket as TicketIcon } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CheckCircle2, Clock3, Download, FileUp, MessageSquareText, Paperclip, Play, Plus, RefreshCw, ShieldAlert, Sparkles, Ticket as TicketIcon } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Card, EmptyState, ErrorState, LoadingState, Notice, PageIntro } from '../components/ui';
 import { CustomerTicketsTable } from '../components/CustomerTicketsTable';
@@ -9,6 +9,7 @@ import type { ModelMetadata, Ticket, TicketStatus } from '../types';
 
 const statusText = (status: TicketStatus) => status.replaceAll('_', ' ');
 const hoursText = (hours?: number | null) => hours == null ? 'Unavailable' : hours > 24 ? `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(hours / 24)} days` : `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(hours)} hours`;
+const slaRemainingText = (hours?: number | null) => hours == null ? 'No deadline available' : hours < 0 ? `${hoursText(Math.abs(hours))} overdue` : `${hoursText(hours)} remaining`;
 const statusClass = (status: TicketStatus) => `ticket-status ticket-status-${status}`;
 
 export function TicketListPage() {
@@ -123,6 +124,7 @@ function StaffTicketListPage() {
                 <span className="ticket-row-icon"><TicketIcon size={18} /></span>
                 <span className="ticket-row-main">
                   <span className="ticket-number">{ticket.ticketNumber} · {ticket.category}</span>
+                  {user?.role === 'it_team' && <span className="ticket-origin-tag">{ticket.ownerRole === 'it_team' ? (ticket.owner === user.id ? 'Raised by me' : 'Admin handled') : 'Assigned to me'}</span>}
                   <strong>{ticket.subject}</strong>
                   <small>{user?.role === 'customer' && ticket.priority === 'unknown' ? 'Priority pending support review' : `${ticket.priority} priority`} · Updated {new Date(ticket.updatedAt).toLocaleString()}</small>
                 </span>
@@ -296,6 +298,7 @@ export function TicketDetailPage() {
   const [resolutionNote, setResolutionNote] = useState('');
   const [delayExplanation, setDelayExplanation] = useState('');
   const [visibility, setVisibility] = useState<'public' | 'internal'>('public');
+  const [workflowAction, setWorkflowAction] = useState<'waiting_customer' | 'resolve' | ''>('');
   const [status, setStatus] = useState<TicketStatus>('open');
   const [priority, setPriority] = useState('');
   const [adminNote, setAdminNote] = useState('');
@@ -337,9 +340,13 @@ export function TicketDetailPage() {
         message,
         visibility: admin || itTeam ? visibility : 'public',
         ...(resolutionNote ? { resolutionNote } : {}),
+        ...(workflowAction ? { workflowAction } : {}),
+        ...(workflowAction === 'resolve' && estimatePassed && delayExplanation.trim() ? { delayExplanation: delayExplanation.trim() } : {}),
       });
       setMessage('');
       setResolutionNote('');
+      setDelayExplanation('');
+      setWorkflowAction('');
     });
   }
 
@@ -361,7 +368,10 @@ export function TicketDetailPage() {
   if (!ticket) return <><PageIntro eyebrow="Ticket" title="Ticket details" description="Loading ticket context and model signals." /><LoadingState label="Loading ticket" /></>;
 
   const assignedToCurrentUser = ticket.assignedTo?.id === user?.id;
-  const canUpdateStatus = admin || (itTeam && assignedToCurrentUser);
+  const ownRaisedTicket = itTeam && ticket.ownerRole === 'it_team' && ticket.owner === user?.id;
+  const adminManagedInternalIssue = ticket.ownerRole === 'it_team';
+  const canManageAsIT = itTeam && assignedToCurrentUser && !adminManagedInternalIssue;
+  const canUpdateStatus = admin || canManageAsIT;
   const estimatePassed = !!ticket.estimatedResolutionAt && Date.now() > new Date(ticket.estimatedResolutionAt).getTime();
   const inputLanguageLabel = ({ auto: 'Mixed / auto', hindi: 'Hindi', english: 'English', hinglish: 'Hinglish' } as const)[ticket.inputLanguage ?? 'auto'];
 
@@ -371,8 +381,12 @@ export function TicketDetailPage() {
         eyebrow={`${ticket.ticketNumber} · ${ticket.ownerRole === 'it_team' ? 'IT Team' : 'Customer'} ticket`}
         title={ticket.subject}
         description={`${ticket.category}${customer ? '' : ` · ${ticket.project}`} · Created ${new Date(ticket.createdAt).toLocaleString()}`}
-        action={<span className={statusClass(ticket.status)}>{statusText(ticket.status)}</span>}
+        action={canManageAsIT && ['assigned', 'triaged'].includes(ticket.status)
+          ? <button type="button" className="button button-primary" disabled={busy} onClick={() => void run(() => api.tickets.updateStatus(ticket.id, { status: 'in_progress' }))}><Play size={15} /> Start work</button>
+          : <span className={statusClass(ticket.status)}>{statusText(ticket.status)}</span>}
       />
+
+      {itTeam && adminManagedInternalIssue && <Notice variant="info"><strong>{ownRaisedTicket ? 'Raised by you.' : 'Admin-handled internal issue.'}</strong> The admin team manages its status and resolution. You can follow updates here.</Notice>}
 
       {customer && (location.state as { ticketCreated?: boolean } | null)?.ticketCreated && (
         <Notice variant="success">Ticket submitted successfully. Your support team will keep you updated.</Notice>
@@ -394,6 +408,19 @@ export function TicketDetailPage() {
         <div className="ticket-detail-main">
           {!customer && (
             <div className="ticket-signal-column ticket-signal-context">
+              {itTeam ? (
+                <Card title="Resolution outlook & SLA" className="ticket-team-summary-card">
+                  <div className="ticket-team-summary-grid">
+                    <div className="ticket-team-summary-item"><span><Clock3 size={15} /> Estimated resolution</span><strong>{hoursText(ticket.aiSignals?.resolutionHours)}</strong><small>{ticket.estimatedResolutionAt ? `Model estimate · ${new Date(ticket.estimatedResolutionAt).toLocaleString()}` : 'No estimate returned'}</small></div>
+                    <div className="ticket-team-summary-item"><span><ShieldAlert size={15} /> Delay risk</span><strong>{ticket.aiSignals?.delayRiskProbability == null ? 'Unavailable' : `${(ticket.aiSignals.delayRiskProbability * 100).toFixed(1)}% · ${ticket.aiSignals.delayRiskCategory}`}</strong><small>{ticket.aiSignals?.flaggedForReview ? 'Flagged for review' : ticket.aiSignals?.unavailableReason ?? 'Historical classifier output'}</small></div>
+                    <div className="ticket-team-summary-item"><span>First response SLA</span><strong>{ticket.sla?.response.status.replaceAll('_', ' ') ?? 'No SLA mapping'}</strong><small>{slaRemainingText(ticket.sla?.response.remainingHours)} · due {ticket.sla?.response.deadlineAt ? new Date(ticket.sla.response.deadlineAt).toLocaleString() : '—'}</small></div>
+                    <div className="ticket-team-summary-item"><span>Resolution SLA</span><strong>{ticket.sla?.resolution.status.replaceAll('_', ' ') ?? 'No SLA mapping'}</strong><small>{slaRemainingText(ticket.sla?.resolution.remainingHours)} · due {ticket.sla?.resolution.deadlineAt ? new Date(ticket.sla.resolution.deadlineAt).toLocaleString() : '—'}</small></div>
+                  </div>
+                  <small className="field-help">The AI duration is an estimate. SLA time remaining is the service target.</small>
+                  {ticket.aiSignals?.riskExplanation && <details className="ticket-risk-details"><summary>Why this delay-risk score?</summary><p>{ticket.aiSignals.riskExplanation.summary}</p>{ticket.aiSignals.riskExplanation.interpretation && <small>{ticket.aiSignals.riskExplanation.interpretation}</small>}</details>}
+                </Card>
+              ) : (
+                <>
 <Card title="Service-level clocks" className="ticket-clock-card">
             <div className="ticket-ai-signal">
               <span>First response</span>
@@ -410,7 +437,7 @@ export function TicketDetailPage() {
             </div>
           </Card>
 
-{ticket.workloadOutlook && (
+          {!itTeam && ticket.workloadOutlook && (
             <Card title="Workload outlook" className="ticket-workload-card">
               <div className="ticket-ai-signal">
                 <span><ShieldAlert size={16} /> Forecast horizon</span>
@@ -425,10 +452,12 @@ export function TicketDetailPage() {
               )}
             </Card>
           )}
+                </>
+              )}
           </div>
           )}
 
-          <Card title="Complaint">
+          {!(itTeam && ticket.description.trim().startsWith('DEMO DATA ONLY')) && <Card title="Complaint">
             <div className="ticket-description">{ticket.description}</div>
             <div className="ticket-meta-row">
               <span className={`context-chip priority-chip priority-${ticket.priority.toLowerCase().replaceAll(' ', '-')}`}>{customer && ticket.priority === 'unknown' ? 'Priority pending support review' : `${ticket.priority} priority`}</span>
@@ -446,7 +475,7 @@ export function TicketDetailPage() {
                 ))}
               </div>
             )}
-          </Card>
+          </Card>}
 
           {customer && (
             <Card title="Progress timeline">
@@ -495,30 +524,35 @@ export function TicketDetailPage() {
               )}
             </div>
 
-            <form className="ticket-reply-form" onSubmit={submitReply}>
+            {(!itTeam || canManageAsIT) ? <form className="ticket-reply-form" onSubmit={submitReply}>
               <label className="field">
                 <span>Add an update</span>
                 <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3} maxLength={5000} required placeholder="Write an update for this ticket…" />
               </label>
-              {(admin || itTeam) && (
+              {(admin || canManageAsIT) && (
+                <>
                 <div className="form-grid-two">
                   <label className="field">
                     <span>Visibility</span>
-                    <select value={visibility} onChange={(e) => setVisibility(e.target.value as 'public' | 'internal')}>
+                    <select value={visibility} onChange={(e) => { setVisibility(e.target.value as 'public' | 'internal'); if (e.target.value === 'internal') setWorkflowAction(''); }}>
                       <option value="public">Customer-visible reply</option>
                       <option value="internal">Internal note</option>
                     </select>
                   </label>
                   <label className="field">
-                    <span>Resolution note (optional)</span>
-                    <input value={resolutionNote} onChange={(e) => setResolutionNote(e.target.value)} maxLength={5000} placeholder="Work completed or next step" />
+                    <span>Resolution note {workflowAction === 'resolve' && <i>*</i>}</span>
+                    <input value={resolutionNote} onChange={(e) => setResolutionNote(e.target.value)} maxLength={5000} required={workflowAction === 'resolve'} placeholder={workflowAction === 'resolve' ? 'Summarize the fix' : 'Work completed or next step'} />
                   </label>
                 </div>
+                <label className="check-row ticket-workflow-option"><input type="checkbox" checked={workflowAction === 'waiting_customer'} disabled={visibility !== 'public'} onChange={(event) => setWorkflowAction(event.target.checked ? 'waiting_customer' : '')} /><span>Request information from the customer and set status to waiting on customer.</span></label>
+                <label className="check-row ticket-workflow-option"><input type="checkbox" checked={workflowAction === 'resolve'} disabled={visibility !== 'public'} onChange={(event) => setWorkflowAction(event.target.checked ? 'resolve' : '')} /><span>Mark this ticket resolved after sending the update.</span></label>
+                {workflowAction === 'resolve' && estimatePassed && <label className="field"><span>Why was this ticket late? <i>*</i></span><textarea value={delayExplanation} onChange={(event) => setDelayExplanation(event.target.value)} maxLength={2000} rows={3} required placeholder="Explain the blocker or delay" /></label>}
+                </>
               )}
-              <button className="button button-primary" disabled={busy || !message.trim()}>
+              <button className="button button-primary" disabled={busy || !message.trim() || (workflowAction === 'resolve' && (!resolutionNote.trim() || (estimatePassed && !delayExplanation.trim())))}>
                 <MessageSquareText size={15} /> Add update
               </button>
-            </form>
+            </form> : <Notice variant="info">This ticket was raised by you. The admin team manages its status and resolution.</Notice>}
           </Card>
 
           {admin && ticket.audit && (
@@ -540,6 +574,7 @@ export function TicketDetailPage() {
         {!customer && (
           <aside className="ticket-detail-side ticket-action-panel">
             <div className="ticket-signal-column ticket-signal-decision">
+              {!itTeam && <>
 <Card title="AI signals" className="ticket-signals-card">
             <div className="ticket-ai-signal">
               <span><ShieldAlert size={16} /> Delay risk</span>
@@ -585,13 +620,16 @@ export function TicketDetailPage() {
             )}
             <div className="ticket-ai-note">Delay risk predicts historical delay; SLA clocks use separate policy targets.</div>
           </Card>
+              </>}
 
 {canUpdateStatus && (
-                        <Card title="Work status" className="action-card-highlight ticket-work-status-card">
+                        <Card title="Correct status if needed" className="action-card-highlight ticket-work-status-card">
+                          <details className="ticket-status-correction">
+                            <summary>Fix an incorrect status</summary>
                           <label className="field">
-                            <span>Status</span>
+                            <span>Set correct status</span>
                             <select value={status} onChange={(e) => setStatus(e.target.value as TicketStatus)}>
-                              {(['triaged', 'assigned', 'in_progress', 'waiting_customer', 'resolved', 'closed'] as TicketStatus[]).map((value) => (
+                              {(['open', 'triaged', 'assigned', 'in_progress', 'waiting_customer', 'resolved', 'closed'] as TicketStatus[]).map((value) => (
                                 <option key={value} value={value}>{statusText(value)}</option>
                               ))}
                             </select>
@@ -619,6 +657,7 @@ export function TicketDetailPage() {
                           >
                             Update status
                           </button>
+                            </details>
                           {ticket.delayExplanation && admin && (
                             <div className="ticket-ai-note">
                               <strong>Late resolution explanation</strong>
@@ -631,7 +670,7 @@ export function TicketDetailPage() {
 
             {admin && (
               <Card title="Admin controls" className="action-card-admin">
-                {ticket.aiSignals?.recommendedAssignee && (
+                {ticket.ownerRole !== 'it_team' && ticket.aiSignals?.recommendedAssignee && (
                   <div className="recommendation-review">
                     <span className="eyebrow">Assignment suggestion</span>
                     <strong>{ticket.aiSignals.recommendedAssignee.name}</strong>
@@ -645,7 +684,7 @@ export function TicketDetailPage() {
                     </button>
                   </div>
                 )}
-                <label className="field">
+                {ticket.ownerRole !== 'it_team' && <label className="field">
                   <span>Assigned IT teammate</span>
                   <select
                     value={ticket.assignedTo?.id ?? ''}
@@ -658,7 +697,7 @@ export function TicketDetailPage() {
                       </option>
                     ))}
                   </select>
-                </label>
+                </label>}
                 <label className="field">
                   <span>Priority{ticket.prioritySource === 'auto' ? ' · assigned automatically' : ticket.prioritySource === 'admin_override' ? ' · manually overridden' : ''}</span>
                   <select value={priority} onChange={(e) => setPriority(e.target.value)}>
