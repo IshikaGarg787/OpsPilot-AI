@@ -155,6 +155,7 @@ export function TicketCreatePage() {
   const [metadataHint, setMetadataHint] = useState('');
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
+  const [inputLanguage, setInputLanguage] = useState<NonNullable<Ticket['inputLanguage']>>('auto');
   const [category, setCategory] = useState(customer ? 'Assistance' : '');
   const [priority, setPriority] = useState(customer ? 'unknown' : '');
   const [project, setProject] = useState(customer ? 'Not specified' : '');
@@ -179,8 +180,8 @@ export function TicketCreatePage() {
     let createdTicketId = '';
     try {
       const { ticket } = customer
-        ? await api.tickets.createCustomer({ subject, description, category: 'Assistance' })
-        : await api.tickets.create({ subject, description, category, priority, project });
+        ? await api.tickets.createCustomer({ subject, description, inputLanguage, category: 'Assistance' })
+        : await api.tickets.create({ subject, description, inputLanguage, category, priority, project });
       createdTicketId = ticket.id;
       for (const file of files) await api.tickets.uploadAttachment(ticket.id, file);
       navigate(customer ? '/app/tickets' : `/app/tickets/${ticket.id}`, { replace: true, state: customer ? { ticketCreated: true } : undefined });
@@ -202,11 +203,21 @@ export function TicketCreatePage() {
         <Card title="Ticket details">
           <label className="field">
             <span>Subject <i>*</i></span>
-            <input value={subject} onChange={(e) => setSubject(e.target.value)} required minLength={4} maxLength={200} placeholder="A short summary of the issue" />
+            <input value={subject} onChange={(e) => setSubject(e.target.value)} required minLength={4} maxLength={200} placeholder="संक्षेप में समस्या लिखें / Summarize the issue" />
           </label>
           <label className="field">
             <span>Description <i>*</i></span>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} required minLength={8} maxLength={5000} rows={7} placeholder="Describe what happened, who is affected, and when it started…" />
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} required minLength={8} maxLength={5000} rows={7} placeholder="Hindi, English, ya Hinglish mein problem batayein. Kya hua, kis par asar hai, aur kab se?" />
+          </label>
+          <label className="field">
+            <span>Input language</span>
+            <select value={inputLanguage} onChange={(e) => setInputLanguage(e.target.value as NonNullable<Ticket['inputLanguage']>)}>
+              <option value="auto">Auto / Mixed (Hindi, English, Hinglish)</option>
+              <option value="hindi">Hindi (हिन्दी)</option>
+              <option value="english">English</option>
+              <option value="hinglish">Hinglish (हिन्दी + English)</option>
+            </select>
+            <small className="field-help">Aap dono fields mein Hindi, English, ya Hinglish likh sakte hain. Text original form mein save hoga.</small>
           </label>
           <div className="form-grid-two">
             <label className="field">
@@ -358,6 +369,7 @@ export function TicketDetailPage() {
   const assignedToCurrentUser = ticket.assignedTo?.id === user?.id;
   const canUpdateStatus = admin || (itTeam && assignedToCurrentUser);
   const estimatePassed = !!ticket.estimatedResolutionAt && Date.now() > new Date(ticket.estimatedResolutionAt).getTime();
+  const inputLanguageLabel = ({ auto: 'Mixed / auto', hindi: 'Hindi', english: 'English', hinglish: 'Hinglish' } as const)[ticket.inputLanguage ?? 'auto'];
 
   return (
     <div className="page-stack ticket-page-wrapper">
@@ -417,6 +429,7 @@ export function TicketDetailPage() {
             <div className="ticket-meta-row">
               <span className={`context-chip priority-chip priority-${ticket.priority.toLowerCase().replaceAll(' ', '-')}`}>{customer && ticket.priority === 'unknown' ? 'Priority pending support review' : `${ticket.priority} priority`}</span>
               <span className="context-chip">{ticket.category}</span>
+              <span className="context-chip">Input: {inputLanguageLabel}</span>
               {customer && <span className="context-chip">{ticket.assignedTo ? `Assigned to ${ticket.assignedTo.name}` : 'Not assigned yet'}</span>}
             </div>
             {ticket.attachments.length > 0 && (

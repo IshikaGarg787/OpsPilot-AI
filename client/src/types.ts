@@ -118,9 +118,10 @@ export interface OperationsDashboardData {
 }
 
 export type TicketStatus = 'open' | 'triaged' | 'assigned' | 'in_progress' | 'waiting_customer' | 'resolved' | 'closed';
+export type TicketInputLanguage = 'auto' | 'hindi' | 'english' | 'hinglish';
 export interface Ticket {
   id: string; ticketNumber: string; ownerRole: 'customer' | 'it_team'; owner?: string;
-  subject: string; description: string; category: string; priority: string; project: string;
+  subject: string; description: string; inputLanguage?: TicketInputLanguage; category: string; priority: string; project: string;
   status: TicketStatus; assignedTo?: { id: string; name: string; email?: string } | null;
   estimatedResolutionAt?: string | null; delayExplanation?: string;
   sla?: TicketSla | null;

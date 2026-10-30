@@ -23,6 +23,7 @@ const ticketSchema = new mongoose.Schema({
   ownerRole: { type: String, enum: ['customer', 'it_team'], required: true },
   subject: { type: String, required: true, trim: true, minlength: 4, maxlength: 200 },
   description: { type: String, required: true, trim: true, minlength: 8, maxlength: 5000 },
+  inputLanguage: { type: String, enum: ['auto', 'hindi', 'english', 'hinglish'], default: 'auto' },
   category: { type: String, required: true, trim: true, maxlength: 100 },
   priority: { type: String, required: true, trim: true, maxlength: 100 },
   project: { type: String, required: true, trim: true, maxlength: 200 },

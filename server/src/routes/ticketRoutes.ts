@@ -61,7 +61,7 @@ async function serialize(ticket: any, role: string, includeDetails = true) {
   if (role === 'customer') return serializeCustomerTicket(ticket, attachments);
   return {
     id: ticket._id.toString(), ticketNumber: ticket.ticketNumber, ownerRole: ticket.ownerRole,
-    owner: ticket.ownerUserId.toString(), subject: ticket.subject, description: ticket.description,
+    owner: ticket.ownerUserId.toString(), subject: ticket.subject, description: ticket.description, inputLanguage: ticket.inputLanguage ?? 'auto',
     category: ticket.category, priority: ticket.priority, project: ticket.project, status: ticket.status,
     assignedTo: ticket.assignedTo && typeof ticket.assignedTo !== 'string' ? { id: ticket.assignedTo._id.toString(), name: ticket.assignedTo.name, email: ticket.assignedTo.email } : ticket.assignedTo,
     aiSignals: ticket.aiSignals, workloadOutlook: ticket.workloadOutlook, recommendation: ticket.recommendation,
@@ -124,7 +124,7 @@ router.post('/', requireRole('customer', 'it_team'), asyncHandler(async (req, re
   const ticketNumber = `OP-${Date.now().toString().slice(-8)}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
   const ticket = new TicketModel({
     ticketNumber, ownerUserId: req.user!._id, ownerRole: role,
-    subject: input.subject, description: input.description, category, priority, project,
+    subject: input.subject, description: input.description, inputLanguage: input.inputLanguage, category, priority, project,
     status: 'open', aiSignals: signals,
     ...(typeof signals.flaggedForReview === 'boolean' ? { recommendation: {
       action: review ? 'priority_review' : 'standard_queue', state: 'pending',

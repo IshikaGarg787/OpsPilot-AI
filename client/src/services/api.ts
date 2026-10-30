@@ -67,8 +67,8 @@ export const api = {
       return request<CustomerTicketPage>(`/tickets/customer${queryString ? `?${queryString}` : ''}`);
     },
     get: (id: string) => request<{ ticket: Ticket }>(`/tickets/${id}`),
-    create: (payload: { subject: string; description: string; category: string; priority: string; project: string }) => request<{ ticket: Ticket }>('/tickets', { method: 'POST', body: JSON.stringify(payload) }),
-    createCustomer: (payload: { subject: string; description: string; category: 'Assistance' }) => request<{ ticket: Ticket }>('/tickets', { method: 'POST', body: JSON.stringify(payload) }),
+    create: (payload: { subject: string; description: string; inputLanguage: Ticket['inputLanguage']; category: string; priority: string; project: string }) => request<{ ticket: Ticket }>('/tickets', { method: 'POST', body: JSON.stringify(payload) }),
+    createCustomer: (payload: { subject: string; description: string; inputLanguage: Ticket['inputLanguage']; category: 'Assistance' }) => request<{ ticket: Ticket }>('/tickets', { method: 'POST', body: JSON.stringify(payload) }),
     respond: (id: string, payload: { message: string; visibility: 'public' | 'internal'; resolutionNote?: string }) => request<{ ticket: Ticket }>(`/tickets/${id}/responses`, { method: 'POST', body: JSON.stringify(payload) }),
     updateStatus: (id: string, payload: { status: string; resolutionNote?: string; delayExplanation?: string }) => request<{ ticket: Ticket }>(`/tickets/${id}/status`, { method: 'PATCH', body: JSON.stringify(payload) }),
     assign: (id: string, assigneeId: string) => request<{ ticket: Ticket }>(`/tickets/${id}/assignment`, { method: 'PATCH', body: JSON.stringify({ assigneeId }) }),
