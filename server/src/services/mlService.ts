@@ -73,6 +73,6 @@ export function predictDelayRisk(payload: Record<string, string>) {
   return request('/predict/delay-risk', { method: 'POST', body: JSON.stringify(payload) }, 120000, env.delayRiskServiceUrl);
 }
 
-export function forecastWorkload(records: Record<string, unknown>[], horizon: 7 | 14) {
-  return request('/forecast/workload', { method: 'POST', body: JSON.stringify({ records, horizon }) }, 180000);
+export function forecastWorkload(records: Record<string, unknown>[], horizon: 7 | 14, timeoutMs = 180000) {
+  return request('/forecast/workload', { method: 'POST', body: JSON.stringify({ records, horizon }) }, timeoutMs);
 }
