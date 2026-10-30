@@ -1497,3 +1497,52 @@ body { background: var(--bg); color: var(--text); }
 .brand { align-items: center; flex-direction: column; gap: 2px; }
 .brand-mark { background: transparent; border-radius: 0; box-shadow: none; display: block; height: 48px; object-fit: contain; position: static; width: 55px; }
 .brand-name { font-size: .9rem; line-height: 1.2; }
+
+.recommendation-page-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; }
+.recommendation-history-stats { display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 0 12px; }
+.recommendation-history-stats > div { background: var(--surface-raised); border: 1px solid var(--border); border-radius: 10px; min-width: 0; padding: 12px 14px; }
+.recommendation-history-stats span, .recommendation-history-stats strong { display: block; }
+.recommendation-history-stats span { color: var(--muted); font-size: .66rem; }
+.recommendation-history-stats strong { font-size: 1.1rem; margin-top: 5px; }
+.recommendation-engine-metrics { display: grid; gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.recommendation-ticket-picker .field { max-width: 760px; }
+.recommendation-ticket-meta { align-items: center; border-top: 1px solid var(--border); color: var(--muted); display: flex; flex-wrap: wrap; font-size: .72rem; gap: 9px 18px; margin-top: 14px; padding-top: 12px; }
+.recommendation-ticket-meta > span { text-transform: capitalize; }
+.recommendation-ticket-meta a { align-items: center; color: var(--blue); display: inline-flex; font-weight: 700; gap: 5px; margin-left: auto; }
+.recommendation-functions { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.recommendation-function-card { align-content: start; min-width: 0; }
+.recommendation-function-card > p { color: var(--text-soft); font-size: .78rem; line-height: 1.6; overflow-wrap: anywhere; }
+.recommendation-function-heading { align-items: center; display: grid; gap: 7px 10px; grid-template-columns: auto minmax(0, 1fr); margin: 4px 0 12px; }
+.recommendation-function-heading > svg { color: var(--blue); grid-row: span 2; }
+.recommendation-function-heading > span { color: var(--muted); font-size: .68rem; }
+.recommendation-function-heading > strong { font-size: .94rem; overflow-wrap: anywhere; }
+.recommendation-function-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.recommendation-function-actions .button { min-height: 34px; }
+.recommendation-feedback { background: var(--surface-raised); border-radius: 8px; color: var(--text); padding: 8px 10px; }
+.recommendation-context-list { display: grid; gap: 0; margin-bottom: 12px; }
+.recommendation-context-list > div { align-items: center; border-bottom: 1px solid var(--border); display: grid; gap: 8px; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.1fr); padding: 10px 0; }
+.recommendation-context-list > div > svg { color: var(--blue); }
+.recommendation-context-list span { color: var(--muted); font-size: .7rem; }
+.recommendation-context-list strong { font-size: .7rem; text-align: right; text-transform: capitalize; }
+.recommendation-results-view { scroll-margin-top: 20px; }
+.recommendation-results-grid { display: grid; gap: 14px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.recommendation-result-card { align-content: start; display: grid; gap: 10px; min-width: 0; }
+.recommendation-result-card .eyebrow { margin: 0; }
+.recommendation-result-value { font-size: clamp(1.6rem, 3vw, 2.35rem); letter-spacing: -.04em; line-height: 1.1; overflow-wrap: anywhere; }
+.recommendation-result-card p, .recommendation-result-recommendation > p { color: var(--text-soft); font-size: .78rem; line-height: 1.6; margin: 0; }
+.recommendation-result-recommendation { border-color: var(--border-strong); }
+.recommendation-result-heading { align-items: center; color: var(--blue); display: flex; gap: 10px; }
+.recommendation-result-heading strong { color: var(--text); font-size: 1.05rem; }
+.recommendation-result-details { border-top: 1px solid var(--border); display: grid; gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 8px; padding-top: 14px; }
+.recommendation-result-details > div { display: grid; gap: 5px; min-width: 0; }
+.recommendation-result-details span, .recommendation-result-details strong { overflow-wrap: anywhere; }
+.recommendation-result-details span { color: var(--muted); font-size: .68rem; }
+.recommendation-result-details strong { font-size: .78rem; }
+.recommendation-evidence-row { align-items: center; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: space-between; padding: 8px 0; }
+.recommendation-evidence-row strong { font-size: .76rem; }
+.recommendation-evidence-row span { color: var(--muted); font-size: .72rem; }
+.recommendation-result-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+.recommendation-result-actions .button { align-items: center; display: inline-flex; gap: 7px; }
+@media (max-width: 950px) { .recommendation-engine-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }.recommendation-history-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 950px) { .recommendation-results-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }.recommendation-result-details { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 680px) { .recommendation-functions, .recommendation-results-grid { grid-template-columns: minmax(0, 1fr); }.recommendation-history-stats { grid-template-columns: minmax(0, 1fr); }.recommendation-page-actions { width: 100%; }.recommendation-page-actions .button { flex: 1; }.recommendation-ticket-meta a { margin-left: 0; }.recommendation-result-actions { align-items: stretch; flex-direction: column; }.recommendation-result-actions .button { justify-content: center; } }

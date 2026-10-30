@@ -84,6 +84,19 @@ class ModelRuntime:
             raise HTTPException(status_code=503, detail="The resolution model artifact is unavailable.")
 
     def validate_categories(self, request: PredictionRequest) -> None:
+        if self.pipeline is None:
+            self.ensure_available()
+        try:
+            encoder = self.pipeline.named_steps["preprocessor"].named_transformers_["categorical"].named_steps["one_hot"]
+        except (AttributeError, KeyError, IndexError) as exc:
+            raise RuntimeError("The resolution artifact does not expose its categorical schema") from exc
+
+        # The trained encoder uses handle_unknown="ignore". Rejecting unseen
+        # values here contradicted the model contract and blocked real tickets
+        # whose priority/project are valid operationally but absent from training.
+        if getattr(encoder, "handle_unknown", "error") == "ignore":
+            return
+
         categories = self.categories()
         values = request.model_dump()
         invalid = [field for field in ("issue_priority", "issue_type", "issue_proj") if values[field] not in categories[field]]

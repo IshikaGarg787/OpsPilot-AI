@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { AlertTriangle, ArrowRight, CheckCircle2, Clock3, FileUp, MessageSquareText, Paperclip, Plus, RefreshCw, ShieldAlert, Sparkles, Ticket as TicketIcon } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CheckCircle2, Clock3, Download, FileUp, MessageSquareText, Paperclip, Plus, RefreshCw, ShieldAlert, Sparkles, Ticket as TicketIcon } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Card, EmptyState, ErrorState, LoadingState, Notice, PageIntro } from '../components/ui';
 import { CustomerTicketsTable } from '../components/CustomerTicketsTable';
@@ -38,6 +38,8 @@ function StaffTicketListPage() {
   const admin = user?.role === 'admin';
   const [tickets, setTickets] = useState<Ticket[] | null>(null);
   const [error, setError] = useState('');
+  const [historyBusy, setHistoryBusy] = useState(false);
+  const [historyMessage, setHistoryMessage] = useState('');
 
   async function load() {
     setError('');
@@ -45,6 +47,29 @@ function StaffTicketListPage() {
       setTickets((await api.tickets.list()).tickets);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Tickets are unavailable.');
+    }
+  }
+
+  async function downloadQueueHistory() {
+    setHistoryBusy(true);
+    setHistoryMessage('');
+    try {
+      const history = await api.predictions.queueWorkloadHistory();
+      const csv = [
+        'date,ticket_count,source',
+        ...history.records.map(({ date, ticket_count, data_source }) => `${date},${ticket_count},${data_source}`),
+      ].join('\n');
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = 'opspilot-queue-workload-history.csv';
+      anchor.click();
+      URL.revokeObjectURL(url);
+      setHistoryMessage(`CSV ready: ${history.actualTicketCount} actual queue tickets and ${history.syntheticDays} simulated bootstrap days. It refreshes from the queue each time you download.`);
+    } catch (err) {
+      setHistoryMessage(err instanceof Error ? err.message : 'Could not prepare the queue history CSV.');
+    } finally {
+      setHistoryBusy(false);
     }
   }
 
@@ -74,8 +99,11 @@ function StaffTicketListPage() {
         eyebrow={admin ? 'Central operations' : user?.role === 'it_team' ? 'IT team workspace' : 'Customer workspace'}
         title={admin ? 'Ticket queue' : 'My tickets'}
         description={admin ? 'Review, assign, and manage tickets across the workspace.' : user?.role === 'it_team' ? 'Track issues you submitted and work assigned to you.' : 'Track your requests and read the latest support response.'}
-        action={!admin ? <Link className="button button-primary" to="/app/tickets/new"><Plus size={16} /> Raise a ticket</Link> : undefined}
+        action={admin
+          ? <button className="button button-secondary" type="button" onClick={() => void downloadQueueHistory()} disabled={historyBusy}><Download size={15} /> {historyBusy ? 'Preparing CSV…' : 'Download workload CSV'}</button>
+          : <Link className="button button-primary" to="/app/tickets/new"><Plus size={16} /> Raise a ticket</Link>}
       />
+      {admin && historyMessage && <Notice variant={historyMessage.startsWith('CSV ready:') ? 'success' : 'warning'}>{historyMessage}</Notice>}
       {admin && (
         <div className="ticket-admin-links">
           <Link to="/app/models">Model health <ArrowRight size={15} /></Link>
@@ -590,7 +618,7 @@ export function TicketDetailPage() {
                   <div className="recommendation-review">
                     <span className="eyebrow">Assignment suggestion</span>
                     <strong>{ticket.aiSignals.recommendedAssignee.name}</strong>
-                    <small>Lowest active workload in the IT team: {ticket.aiSignals.recommendedAssignee.activeTickets} open tickets when scored.</small>
+                    <small>Suggested from current active workload ({ticket.aiSignals.recommendedAssignee.activeTickets}); skill fit breaks ties{ticket.aiSignals.recommendedAssignee.matchingSkills?.length ? ` · skills: ${ticket.aiSignals.recommendedAssignee.matchingSkills.join(', ')}` : ''}. Confirm availability and fit before assigning.</small>
                     <button
                       className="button button-secondary button-small"
                       disabled={busy || ticket.assignedTo?.id === ticket.aiSignals.recommendedAssignee.id}
@@ -636,8 +664,9 @@ export function TicketDetailPage() {
                   <small className="field-help">Suggested priority: {ticket.aiSignals.recommendedPriority} · based on the delay review threshold; confirm against current customer impact.</small>
                 )}
                 <div className="recommendation-review">
-                  <span className="eyebrow">AI recommendation</span>
+                  <span className="eyebrow">Decision support recommendation</span>
                   <strong>{ticket.recommendation?.action === 'priority_review' ? 'Review early' : ticket.recommendation?.action === 'standard_queue' ? 'Standard queue' : 'No recommendation'}</strong>
+                  <small>This combines the delay-risk model, SLA clocks, resolution estimate, and current team workload. It never assigns or reprioritizes a ticket automatically.</small>
                   <small>{ticket.recommendation?.rationale ?? 'A risk model score is required before a recommendation can be reviewed.'}</small>
                   {ticket.recommendation?.state === 'pending' ? (
                     <>

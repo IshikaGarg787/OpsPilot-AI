@@ -12,7 +12,9 @@ import { backfillSavedTicketPredictions } from '../services/ticketPredictionHist
 import { TicketModel } from '../models/Ticket.js';
 import { UserModel } from '../models/User.js';
 import { calculateTicketSlaForRecord } from '../services/slaPolicy.js';
+import { buildRecommendation } from '../services/recommendationEngine.js';
 import { customerPredictionFilter } from '../services/customerPredictions.js';
+import { buildQueueWorkloadHistory } from '../services/queueWorkloadHistory.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -131,6 +133,23 @@ router.get('/workload/history', requireRole('admin'), asyncHandler(async (_req, 
   res.json({ success: true, data: { records, historyDays, ticketTotal: records.reduce((sum, row) => sum + row.ticket_count, 0), enoughHistory: historyDays >= 120, firstTicketDate: daily[0]?._id ?? null, lastCompleteDate: records.at(-1)?.date ?? null, templateStart, templateEnd: end.toISOString().slice(0, 10) }, message: daily.length ? 'Daily ticket history loaded from customer tickets in this workspace.' : 'No ticket history exists yet; a dated template range is ready for external data.' });
 }));
 
+router.get('/workload/queue-history', requireRole('admin'), asyncHandler(async (_req, res) => {
+  requireDatabase();
+  const now = new Date();
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const start = new Date(today.getTime() - 119 * 86400000);
+  const [firstTicket, daily] = await Promise.all([
+    TicketModel.aggregate([{ $sort: { createdAt: 1 } }, { $limit: 1 }, { $project: { createdAt: 1 } }]),
+    TicketModel.aggregate([
+      { $match: { createdAt: { $gte: start, $lt: new Date(today.getTime() + 86400000) } } },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'UTC' } }, ticket_count: { $sum: 1 } } },
+      { $sort: { _id: 1 } },
+    ]),
+  ]);
+  const history = buildQueueWorkloadHistory(daily, firstTicket[0]?.createdAt ?? null, now);
+  res.json({ success: true, data: history, message: 'A rolling daily workload file was built from ticket-queue records and clearly marked bootstrap history.' });
+}));
+
 router.post('/workload', asyncHandler(async (req, res) => {
   requireDatabase();
   const input = workloadForecastSchema.parse(req.body);
@@ -172,23 +191,25 @@ router.post('/triage', requireRole('admin'), asyncHandler(async (req, res) => {
     const workload = workloadResponseSchema.parse(await forecastWorkload(input.workload_records, input.horizon));
     const expectedTickets = workload.forecast.reduce((total, day) => total + day.forecast, 0);
     const ticketSla = linkedTicket ? calculateTicketSlaForRecord(linkedTicket) : null;
-    const slaNeedsReview = Boolean(ticketSla && [ticketSla.response.status, ticketSla.resolution.status].some((status) => status === 'at_risk' || status === 'breached'));
     const activeMembers = await UserModel.find({ role: 'it_team', availability: { $ne: 'unavailable' } }).select('name email skills availability').sort({ name: 1 }).lean();
     const memberLoads = await TicketModel.aggregate([
       { $match: { status: { $in: ['assigned', 'in_progress'] }, assignedTo: { $ne: null }, ...(linkedTicket ? { _id: { $ne: linkedTicket._id } } : {}) } },
       { $group: { _id: '$assignedTo', activeTickets: { $sum: 1 } } },
     ]);
     const loadByMember = new Map(memberLoads.map((item: any) => [String(item._id), item.activeTickets as number]));
-    const issueTerms = `${input.issue_type} ${input.issue_proj}`.toLowerCase().split(/[^a-z0-9]+/).filter((term) => term.length >= 3);
-    const freeMembers = activeMembers.filter((member: any) => (loadByMember.get(String(member._id)) ?? 0) === 0);
-    const skillFit = (member: any) => (member.skills ?? []).reduce((score: number, skill: string) => score + (issueTerms.some((term) => skill.toLowerCase().includes(term) || term.includes(skill.toLowerCase())) ? 1 : 0), 0);
-    const assignmentRecommendation = freeMembers.length
-      ? [...freeMembers].sort((a: any, b: any) => skillFit(b) - skillFit(a) || a.name.localeCompare(b.name))[0]
-      : null;
-    const recommendReview = risk.flagged_for_review || slaNeedsReview;
-    const recommendedPriority = recommendReview && /^(low|lowest|medium)$/i.test(input.issue_priority.trim())
-      ? ({ lowest: 'Low', low: 'Medium', medium: 'High' }[input.issue_priority.trim().toLowerCase()] ?? input.issue_priority)
-      : input.issue_priority;
+    const recommendation = buildRecommendation({
+      priority: input.issue_priority,
+      riskProbability: risk.risk_probability,
+      riskThreshold: risk.decision_threshold,
+      flaggedForReview: risk.flagged_for_review,
+      resolutionHours: duration.duration,
+      sla: ticketSla,
+      historicalEvidence: risk.explanation?.historical_evidence.map((item) => ({ factor: item.factor, value: item.value, historicalDelayRate: item.historical_delay_rate, historicalTickets: item.historical_tickets })),
+      workload: { horizon: workload.horizon, expectedTickets, highLoadDays: workload.forecast.filter((day) => day.high_load_flag).length },
+      candidates: activeMembers.map((member: any) => ({ id: String(member._id), name: member.name, skills: member.skills ?? [], activeTickets: loadByMember.get(String(member._id)) ?? 0 })),
+      issueType: input.issue_type,
+      project: input.issue_proj,
+    });
     const riskExplanation = risk.explanation ? {
       summary: risk.explanation.summary,
       historicalEvidence: risk.explanation.historical_evidence,
@@ -202,8 +223,8 @@ router.post('/triage', requireRole('admin'), asyncHandler(async (req, res) => {
         targetThresholdHours: risk.target_threshold_hours, resolutionHours: duration.duration,
         riskModelVersion: risk.model_version, resolutionModelVersion: duration.model_version,
         ...(riskExplanation ? { riskExplanation } : {}),
-        ...(assignmentRecommendation ? { recommendedAssignee: { id: String(assignmentRecommendation._id), name: assignmentRecommendation.name, activeTickets: loadByMember.get(String(assignmentRecommendation._id)) ?? 0 } } : {}),
-        recommendedPriority,
+        ...(recommendation.assignee ? { recommendedAssignee: recommendation.assignee } : {}),
+        recommendedPriority: recommendation.recommendedPriority,
         checkedAt: new Date(),
       };
       linkedTicket.workloadOutlook = {
@@ -215,8 +236,7 @@ router.post('/triage', requireRole('admin'), asyncHandler(async (req, res) => {
       };
       if (!linkedTicket.recommendation?.state || linkedTicket.recommendation.state === 'pending') {
         linkedTicket.recommendation = {
-          action: recommendReview ? 'priority_review' : 'standard_queue', state: 'pending',
-          rationale: `${risk.flagged_for_review ? `Risk ${Math.round(risk.risk_probability * 100)}% crossed the ${Math.round(risk.decision_threshold * 100)}% review threshold` : `Risk ${Math.round(risk.risk_probability * 100)}% stayed below the ${Math.round(risk.decision_threshold * 100)}% review threshold`}.${slaNeedsReview ? ` SLA status: response ${ticketSla!.response.status}, resolution ${ticketSla!.resolution.status}.` : ''} ${riskExplanation?.historicalEvidence.map((item) => `${item.factor} ${item.value}: ${Math.round(item.historical_delay_rate * 100)}% delayed across ${item.historical_tickets} historical tickets`).join('; ') || `${risk.context?.historical_outcomes_known_before_ticket ?? 0} historical outcomes were known before this ticket`}. Suggested priority: ${recommendedPriority}.${assignmentRecommendation ? ` Lowest-load available assignee: ${assignmentRecommendation.name} (${loadByMember.get(String(assignmentRecommendation._id)) ?? 0} active tickets).` : ' No IT Team members are available for assignment.'} Delay risk and SLA clocks have different definitions.`,
+          action: recommendation.action, state: 'pending', rationale: recommendation.rationale,
         };
       }
       linkedTicket.audit.push({ actorId: req.user!._id, actorName: req.user!.name, actorRole: 'admin', action: 'ai_decision_flow_completed', details: `Risk, resolution, and ${workload.horizon}-day workload outlook refreshed.` } as any);
@@ -247,7 +267,7 @@ router.post('/triage', requireRole('admin'), asyncHandler(async (req, res) => {
       },
       status: 'success',
     });
-    res.status(201).json({ success: true, data: { prediction: serialize(saved), risk, resolution: duration, workload, recommendation: { recommendedPriority, assignee: assignmentRecommendation ? { id: String(assignmentRecommendation._id), name: assignmentRecommendation.name, activeTickets: loadByMember.get(String(assignmentRecommendation._id)) ?? 0 } : null }, sla: ticketSla }, message: 'Ticket decision pipeline completed.' });
+    res.status(201).json({ success: true, data: { prediction: serialize(saved), risk, resolution: duration, workload, recommendation: { action: recommendation.action, rationale: recommendation.rationale, recommendedPriority: recommendation.recommendedPriority, assignee: recommendation.assignee }, sla: ticketSla }, message: 'Ticket decision pipeline completed.' });
   } catch (error) {
     if (error instanceof MlServiceError) throw new HttpError(error.status, error.message, error.code);
     if (error instanceof z.ZodError) throw new HttpError(503, 'A model returned an unexpected response; no pipeline result was saved.', 'ML_INVALID_RESPONSE');

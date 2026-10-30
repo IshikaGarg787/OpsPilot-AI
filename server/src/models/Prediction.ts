@@ -40,7 +40,7 @@ const predictionSchema = new mongoose.Schema(
         expectedTickets: { type: Number, min: 0 },
         highLoadDays: { type: Number, min: 0 },
         modelVersion: { type: String },
-        source: { type: String, enum: ['workspace_ticket_history', 'uploaded_csv', 'triage'] },
+        source: { type: String, enum: ['workspace_ticket_history', 'uploaded_csv', 'queue_history', 'triage'] },
         forecast: [{
           _id: false,
           date: { type: String, required: true },

@@ -58,7 +58,7 @@ const themeOptions: ThemeOption[] = [
 ];
 
 export function ThemeToggle({ label = false }: { label?: boolean }) {
-  const { theme, resolvedTheme, setTheme } = useTheme();
+  const { theme, resolvedTheme, selectTheme: chooseTheme } = useTheme();
   const { user, setUser } = useAuth();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -78,7 +78,7 @@ export function ThemeToggle({ label = false }: { label?: boolean }) {
   }, [open]);
 
   function selectTheme(nextTheme: ThemePreference) {
-    setTheme(nextTheme);
+    chooseTheme(nextTheme);
     setOpen(false);
     if (user) {
       // Backend only validates 'light' | 'dark' | 'system'; cyber and aurora map safely to dark
@@ -87,7 +87,7 @@ export function ThemeToggle({ label = false }: { label?: boolean }) {
     }
   }
 
-  const currentOption = themeOptions.find((opt) => opt.id === theme) ?? themeOptions[0];
+  const currentOption = themeOptions.find((opt) => opt.id === theme) ?? themeOptions.find((opt) => opt.id === 'system')!;
   const CurrentIcon = currentOption.icon;
 
   return (

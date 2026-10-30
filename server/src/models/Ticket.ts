@@ -56,7 +56,7 @@ const ticketSchema = new mongoose.Schema({
       evidenceCutoff: String,
       interpretation: String,
     },
-    recommendedAssignee: { id: String, name: String, activeTickets: Number },
+    recommendedAssignee: { id: String, name: String, activeTickets: Number, matchingSkills: [String] },
     recommendedPriority: String,
   },
   workloadOutlook: {
