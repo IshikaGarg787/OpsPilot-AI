@@ -729,6 +729,17 @@ html, body, #root { max-width: 100%; min-width: 0; overflow-x: clip; }
 .topbar .breadcrumb-link { border-radius:4px; color:var(--muted); text-decoration:none; transition:color .16s ease; }
 .topbar .breadcrumb-link:hover,.topbar .breadcrumb-link:focus-visible { color:var(--blue); text-decoration:underline; text-underline-offset:3px; }
 @media(max-width:620px) { .workforce-roster-toolbar { align-items:stretch; flex-direction:column; padding-left:16px; padding-right:16px; }.workforce-roster-toolbar .field { max-width:none; }.workforce-roster-toolbar .field-help { margin:0; }.workforce-detail-actions { justify-content:flex-start; } }
+.assignment-recommendations { background:var(--surface-raised); border:1px solid var(--border); border-radius:12px; display:grid; gap:12px; margin:12px 0 16px; padding:13px; }
+.assignment-recommendations-heading { display:grid; gap:4px; }
+.assignment-recommendations-heading > small { color:var(--muted); font-size:.71rem; line-height:1.5; }
+.assignment-recommendation-list { display:grid; gap:8px; }
+.assignment-recommendation { background:var(--surface); border:1px solid var(--border); border-radius:10px; display:grid; gap:8px; padding:11px; }
+.assignment-recommendation.top-recommendation { border-color:color-mix(in srgb,var(--teal) 38%,var(--border)); box-shadow:inset 3px 0 var(--teal); }
+.assignment-recommendation-main { align-items:center; display:flex; flex-wrap:wrap; gap:8px; min-width:0; }
+.assignment-recommendation-main strong { flex:1 1 130px; min-width:0; overflow-wrap:anywhere; }
+.assignment-rank { color:var(--teal); font-size:.66rem; font-weight:800; text-transform:uppercase; }
+.assignment-recommendation p { color:var(--text-soft); font-size:.72rem; line-height:1.5; margin:0; }
+.assignment-recommendation .button { justify-self:start; }
 
 /* Customer and IT Team support assistant */
 .support-chat-widget { position: fixed; z-index: 80; right: max(22px, env(safe-area-inset-right)); bottom: max(22px, env(safe-area-inset-bottom)); }

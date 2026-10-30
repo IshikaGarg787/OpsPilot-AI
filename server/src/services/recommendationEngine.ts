@@ -3,6 +3,7 @@ export type RecommendationCandidate = {
   name: string;
   activeTickets: number;
   skills: string[];
+  slaBreaches?: number;
 };
 
 export type RecommendationAssessment = {
@@ -36,20 +37,29 @@ function suggestPriority(priority: string, needsReview: boolean): string {
 }
 
 export function recommendAssignee(candidates: RecommendationCandidate[], issueType = '', project = ''): RecommendationAssessment['assignee'] {
-  if (!candidates.length) return null;
+  return rankAssignees(candidates, issueType, project)[0] ?? null;
+}
+
+export function rankAssignees(candidates: RecommendationCandidate[], issueType = '', project = ''): Array<Omit<RecommendationCandidate, 'skills'> & { matchingSkills: string[]; availability: 'available' | 'unavailable' }> {
+  if (!candidates.length) return [];
   const issueTerms = `${issueType} ${project}`.toLowerCase().split(/[^a-z0-9]+/).filter((term) => term.length >= 3);
   const ranked = candidates.map((candidate) => {
     const matchingSkills = (candidate.skills ?? []).filter((skill) => {
       const normalizedSkill = skill.toLowerCase().trim();
       return normalizedSkill && issueTerms.some((term) => normalizedSkill.includes(term) || term.includes(normalizedSkill));
     });
-    return { ...candidate, matchingSkills, activeTickets: candidate.activeTickets ?? 0 };
+    const activeTickets = candidate.activeTickets ?? 0;
+    return { id: candidate.id, name: candidate.name, activeTickets, slaBreaches: candidate.slaBreaches ?? 0, matchingSkills, availability: activeTickets === 0 ? 'available' as const : 'unavailable' as const };
   });
 
-  // Workload is the primary criterion; skill fit breaks ties so the rule stays easy to explain.
-  ranked.sort((a, b) => a.activeTickets - b.activeTickets || b.matchingSkills.length - a.matchingSkills.length || a.name.localeCompare(b.name));
-  const best = ranked[0];
-  return { id: best.id, name: best.name, activeTickets: best.activeTickets, matchingSkills: best.matchingSkills };
+  const availableExists = ranked.some((candidate) => candidate.availability === 'available');
+  ranked.sort((a, b) => {
+    if (availableExists && a.availability !== b.availability) return a.availability === 'available' ? -1 : 1;
+    // With no available members, minimize unresolved work first; then use skill fit and SLA history.
+    if (!availableExists && a.activeTickets !== b.activeTickets) return a.activeTickets - b.activeTickets;
+    return b.matchingSkills.length - a.matchingSkills.length || a.slaBreaches - b.slaBreaches || a.activeTickets - b.activeTickets || a.name.localeCompare(b.name);
+  });
+  return ranked;
 }
 
 export function buildRecommendation(input: RecommendationInput): RecommendationAssessment {
@@ -86,7 +96,7 @@ export function buildRecommendation(input: RecommendationInput): RecommendationA
 
   const assignee = recommendAssignee(input.candidates ?? [], input.issueType, input.project);
   if (assignee) {
-    reasons.push(`Suggested teammate: ${assignee.name}, with ${assignee.activeTickets} active ${assignee.activeTickets === 1 ? 'ticket' : 'tickets'}${assignee.matchingSkills.length ? ` and ${assignee.matchingSkills.length} matching ${assignee.matchingSkills.length === 1 ? 'skill' : 'skills'}` : ''}. Workload ranks first; skill fit breaks ties.`);
+    reasons.push(`Suggested teammate: ${assignee.name}, with ${assignee.activeTickets} unresolved ${assignee.activeTickets === 1 ? 'ticket' : 'tickets'}${assignee.matchingSkills.length ? ` and ${assignee.matchingSkills.length} matching ${assignee.matchingSkills.length === 1 ? 'skill' : 'skills'}` : ''}. Availability is preferred; skill fit ranks available members and the lowest unresolved load ranks the team when all are busy. SLA breaches break ties.`);
   } else {
     reasons.push('No available IT teammates were found for an assignment suggestion.');
   }
