@@ -53,7 +53,7 @@ services:
       CLIENT_ORIGIN: http://localhost:8080
       COOKIE_SECURE: "false"
       SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
-      MONGODB_URI: mongodb://mongo:27017/opspilot_ai
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017/opspilot_ai}
       ML_SERVICE_URL: http://resolution:8000
       DELAY_RISK_SERVICE_URL: http://delayrisk:8001
       MODEL_API_TOKEN: ${MODEL_API_TOKEN:?Set MODEL_API_TOKEN in .env}
