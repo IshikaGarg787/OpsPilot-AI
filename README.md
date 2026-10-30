@@ -57,6 +57,8 @@ Provision the single Admin owner with the protected setup command documented in 
 
 For separate terminals or troubleshooting, use the exact instructions in [`docs/LOCAL_SETUP.md`](docs/LOCAL_SETUP.md).
 
+For a free Vercel + Render demo deployment, see [`docs/DEPLOY_VERCEL_RENDER.md`](docs/DEPLOY_VERCEL_RENDER.md). Free Render services can sleep and are not intended for production.
+
 ## Model evidence and limitations
 
 - **Resolution time:** the included notebook reports chronological held-out test MAE 692.21 hours, RMSE 1,215.48 hours, and R² -0.0982 on 9,877 rows. MAE is 678.95 hours lower than the saved median-baseline MAE (1,371.16 hours), while negative R² indicates worse squared-error performance than a mean predictor. Treat the estimate as experimental planning context, not an SLA promise.

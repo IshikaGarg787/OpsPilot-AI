@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { ThemePreference } from '../types';
 
-export type ResolvedTheme = 'dark' | 'light' | 'cyber' | 'aurora';
+export type ResolvedTheme = 'dark' | 'light' | 'cyber' | 'aurora' | 'system';
 
 type ThemeContextValue = {
   theme: ThemePreference;
@@ -10,16 +10,18 @@ type ThemeContextValue = {
 };
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
+const WARM_DEFAULT_MIGRATION = 'opspilot-warm-operations-v2';
 
 function resolveTheme(theme: ThemePreference): ResolvedTheme {
-  if (theme === 'system') {
-    return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-  }
+  if (theme === 'system') return 'system';
   return (theme as ResolvedTheme) || 'dark';
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemePreference>(() => (localStorage.getItem('opspilot-theme') as ThemePreference | null) ?? 'light');
+  const [theme, setThemeState] = useState<ThemePreference>(() => {
+    if (localStorage.getItem(WARM_DEFAULT_MIGRATION) !== 'done') return 'light';
+    return (localStorage.getItem('opspilot-theme') as ThemePreference | null) ?? 'light';
+  });
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => resolveTheme(theme));
 
   useEffect(() => {
@@ -27,13 +29,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setResolvedTheme(resolved);
     document.documentElement.dataset.theme = resolved;
     localStorage.setItem('opspilot-theme', theme);
-  }, [theme]);
-
-  useEffect(() => {
-    const media = window.matchMedia('(prefers-color-scheme: light)');
-    const listener = () => theme === 'system' && setResolvedTheme(resolveTheme('system'));
-    media.addEventListener('change', listener);
-    return () => media.removeEventListener('change', listener);
   }, [theme]);
 
   const value = useMemo(() => ({ theme, resolvedTheme, setTheme: setThemeState }), [theme, resolvedTheme]);

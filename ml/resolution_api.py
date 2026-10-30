@@ -12,9 +12,10 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
+from ml.model_auth import require_model_token
 
 from .resolution_predictor import DEFAULT_ARTIFACT_PATH, load_resolution_pipeline, predict_resolution_time_with_pipeline
 
@@ -163,7 +164,7 @@ def metadata() -> dict[str, Any]:
 
 
 @app.post("/predict/resolution-time")
-def predict(request: PredictionRequest) -> dict[str, Any]:
+def predict(request: PredictionRequest, _auth: None = Depends(require_model_token)) -> dict[str, Any]:
     return runtime.predict(request)
 
 
@@ -343,7 +344,7 @@ def workload_forecast_health():
     }
 
 @app.post("/forecast/workload")
-def workload_forecast(request: WorkloadForecastRequest):
+def workload_forecast(request: WorkloadForecastRequest, _auth: None = Depends(require_model_token)):
     try:
         daily = _live_daily_series(request.records)
         forecast = _live_xgb_forecast(daily, request.horizon)

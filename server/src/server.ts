@@ -13,6 +13,6 @@ if (databaseConnected && process.env.NODE_ENV !== 'production') {
 }
 const slaInterval = setInterval(() => { if (databaseStatus().connected) void evaluateSlaRecords().catch((error) => console.error('SLA evaluation failed:', error instanceof Error ? error.message : 'unknown error')); }, 60_000);
 slaInterval.unref();
-app.listen(env.port, () => {
+app.listen(env.port, '0.0.0.0', () => {
   console.log(`OpsPilot API listening on http://localhost:${env.port}`);
 });
