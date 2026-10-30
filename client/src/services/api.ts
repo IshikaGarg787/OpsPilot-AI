@@ -1,4 +1,4 @@
-import type { CustomerDashboardData, CustomerTicketPage, DashboardActivity, DashboardSummary, ModelInfo, ModelMetadata, OperationsDashboardData, PaginatedPredictions, Prediction, SlaEvent, SlaOverview, SlaPolicy, ThemePreference, Ticket, TicketStatus, TriageResult, User, WorkloadForecastHealth, WorkloadForecastResult } from '../types';
+import type { CustomerDashboardData, CustomerTicketPage, DashboardActivity, DashboardSummary, ModelInfo, ModelMetadata, OperationsDashboardData, PaginatedPredictions, Prediction, ResolutionRecommendation, SlaEvent, SlaOverview, SlaPolicy, ThemePreference, Ticket, TicketStatus, TriageResult, User, WorkloadForecastHealth, WorkloadForecastResult } from '../types';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000/api/v1').replace(/\/$/, '');
 
@@ -67,6 +67,7 @@ export const api = {
       return request<CustomerTicketPage>(`/tickets/customer${queryString ? `?${queryString}` : ''}`);
     },
     get: (id: string) => request<{ ticket: Ticket }>(`/tickets/${id}`),
+    resolutionRecommendation: (id: string) => request<{ recommendation: ResolutionRecommendation }>(`/tickets/${id}/resolution-recommendation`, { method: 'POST', signal: AbortSignal.timeout(8000) }),
     create: (payload: { subject: string; description: string; inputLanguage: Ticket['inputLanguage']; category: string; project: string }) => request<{ ticket: Ticket }>('/tickets', { method: 'POST', body: JSON.stringify(payload) }),
     createCustomer: (payload: { subject: string; description: string; inputLanguage: Ticket['inputLanguage']; category: 'Assistance' }) => request<{ ticket: Ticket }>('/tickets', { method: 'POST', body: JSON.stringify(payload) }),
     respond: (id: string, payload: { message: string; visibility: 'public' | 'internal'; resolutionNote?: string }) => request<{ ticket: Ticket }>(`/tickets/${id}/responses`, { method: 'POST', body: JSON.stringify(payload) }),
