@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, BarChart3, Check, CheckCircle2, Clock3, RefreshCw, ShieldAlert, UserRound, Users } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Card, EmptyState, ErrorState, LoadingState, Notice, PageIntro } from '../components/ui';
 import { api } from '../services/api';
 import type { Ticket, TriageResult } from '../types';
@@ -10,9 +10,10 @@ function readable(value?: string | null) {
 }
 
 export function RecommendationEnginePage() {
+  const location = useLocation();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [queueHistory, setQueueHistory] = useState<Awaited<ReturnType<typeof api.predictions.queueWorkloadHistory>> | null>(null);
-  const [selectedId, setSelectedId] = useState('');
+  const [selectedId, setSelectedId] = useState(() => (location.state as { ticketId?: string } | null)?.ticketId ?? '');
   const [selectedAction, setSelectedAction] = useState<'priority_review' | 'standard_queue'>('priority_review');
   const [decisionNote, setDecisionNote] = useState('');
   const [loading, setLoading] = useState(true);

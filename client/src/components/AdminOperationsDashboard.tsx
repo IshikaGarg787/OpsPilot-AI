@@ -19,6 +19,15 @@ function SectionPagination({ page, total, onPage }: { page: number; total: numbe
   return <nav className="ops-pagination" aria-label="Section pagination"><span>Showing {start}–{end} of {total}</span><div><button className="button button-secondary" disabled={page <= 1} onClick={() => onPage(page - 1)}>Previous</button><span>Page {page} of {pages}</span><button className="button button-secondary" disabled={page >= pages} onClick={() => onPage(page + 1)}>Next</button></div></nav>;
 }
 
+function RecommendationReviewSummary() {
+  const [tickets, setTickets] = useState<Awaited<ReturnType<typeof api.tickets.list>>['tickets'] | null>(null);
+  useEffect(() => { api.tickets.list().then(({ tickets: rows }) => setTickets(rows)).catch(() => setTickets([])); }, []);
+  const pending = tickets?.filter((ticket) => ticket.recommendation?.state === 'pending') ?? [];
+  return <Card title="Recommendations to review" action={<Link className="card-link" to="/app/recommendations">Open engine <ArrowRight size={14} /></Link>}>
+    {tickets === null ? <p className="field-help">Loading pending decisions…</p> : pending.length ? <div className="ticket-list">{pending.slice(0, 4).map((ticket) => <Link className="ticket-row recommendation-summary-row" to={`/app/tickets/${ticket.id}`} key={ticket.id}><span className="ticket-row-icon"><BrainCircuit size={17} /></span><span className="ticket-row-main"><span className="ticket-number">{ticket.ticketNumber} · {ticket.priority}</span><strong>{ticket.subject}</strong><small>{ticket.recommendation?.action === 'priority_review' ? 'Review early' : 'Standard queue'} · {ticket.aiSignals?.delayRiskProbability == null ? 'Risk score unavailable' : `${(ticket.aiSignals.delayRiskProbability * 100).toFixed(0)}% predicted delay risk`}</small></span><span className="neutral-pill">Pending</span></Link>)}</div> : <EmptyState title="No pending recommendations" description="Run an analysis for a ticket to create a recommendation for admin review." />}
+  </Card>;
+}
+
 export function AdminOperationsDashboard({ mode = 'analytics' }: { mode?: 'overview' | 'analytics' }) {
   const [range, setRange] = useState<7 | 30 | 90>(30);
   const [priority, setPriority] = useState('');
@@ -64,9 +73,12 @@ export function AdminOperationsDashboard({ mode = 'analytics' }: { mode?: 'overv
         <MetricCard label="At SLA risk" value={String(data.summary.atRisk)} detail="Open tickets approaching deadline" icon={Clock3} accent="amber" />
         <MetricCard label="High delay risk" value={String(data.summary.highRisk)} detail="Saved ML predictions; not confirmed breaches" icon={BrainCircuit} accent="violet" />
       </div>
-      <Card title="Needs attention" action={<Link className="card-link" to="/app/analytics">Open full analytics</Link>}>
-        {data.attention.length ? <div className="ticket-list">{data.attention.slice(0, 5).map((ticket) => <Link className="ticket-row" to={`/app/tickets/${ticket._id}`} key={ticket._id}><span className="ticket-row-icon"><AlertTriangle size={17} /></span><span className="ticket-row-main"><span className="ticket-number">{ticket.ticketNumber} · {ticket.priority}</span><strong>{ticket.subject}</strong><small>{ticket.assignee ?? 'Unassigned'} · SLA {ticket.firstResponseStatus ?? 'not tracked'} / {ticket.resolutionStatus ?? 'not tracked'} · ML risk {ticket.delayRiskCategory ?? 'unavailable'}</small></span><span className={`ticket-status ticket-status-${ticket.status}`}>{ticket.status.replaceAll('_', ' ')}</span><ArrowRight size={16} /></Link>)}</div> : <EmptyState title="No urgent tickets" description="No current ticket matches the SLA, high-risk, or unassigned attention rules." />}
-      </Card>
+      <div className="dashboard-grid">
+        <Card title="Needs attention" action={<Link className="card-link" to="/app/analytics">Open full analytics</Link>}>
+          {data.attention.length ? <div className="ticket-list">{data.attention.slice(0, 5).map((ticket) => <Link className="ticket-row" to={`/app/tickets/${ticket._id}`} key={ticket._id}><span className="ticket-row-icon"><AlertTriangle size={17} /></span><span className="ticket-row-main"><span className="ticket-number">{ticket.ticketNumber} · {ticket.priority}</span><strong>{ticket.subject}</strong><small>{ticket.assignee ?? 'Unassigned'} · SLA {ticket.firstResponseStatus ?? 'not tracked'} / {ticket.resolutionStatus ?? 'not tracked'} · ML risk {ticket.delayRiskCategory ?? 'unavailable'}</small></span><span className={`ticket-status ticket-status-${ticket.status}`}>{ticket.status.replaceAll('_', ' ')}</span><ArrowRight size={16} /></Link>)}</div> : <EmptyState title="No urgent tickets" description="No current ticket matches the SLA, high-risk, or unassigned attention rules." />}
+        </Card>
+        <RecommendationReviewSummary />
+      </div>
       <div className="ops-overview-footer"><span>Detailed trends, workload and activity are in Analytics.</span><Link className="button button-secondary" to="/app/analytics">View Analytics <ArrowRight size={15} /></Link></div>
     </>}
   </section>;

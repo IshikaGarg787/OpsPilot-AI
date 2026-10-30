@@ -106,6 +106,7 @@ function StaffTicketListPage() {
       {admin && historyMessage && <Notice variant={historyMessage.startsWith('CSV ready:') ? 'success' : 'warning'}>{historyMessage}</Notice>}
       {admin && (
         <div className="ticket-admin-links">
+          <Link to="/app/recommendations">Review recommendations <ArrowRight size={15} /></Link>
           <Link to="/app/models">Model health <ArrowRight size={15} /></Link>
           <Link to="/app/workload-forecasting">Workload outlook <ArrowRight size={15} /></Link>
         </div>
@@ -129,6 +130,8 @@ function StaffTicketListPage() {
                 <span className="ticket-row-ai">
                   {user?.role === 'customer' ? (
                     ticket.aiSignals?.resolutionHours != null ? <><Clock3 size={15} /> ~{hoursText(ticket.aiSignals.resolutionHours)} to resolve</> : <span>Resolution estimate unavailable</span>
+                  ) : admin && ticket.recommendation?.action ? (
+                    <><ShieldAlert size={15} /> {ticket.recommendation.action === 'priority_review' ? 'Review early' : 'Standard queue'} · {ticket.recommendation.state === 'pending' ? 'awaiting review' : ticket.recommendation.state?.replaceAll('_', ' ') ?? 'not reviewed'}</>
                   ) : ticket.aiSignals?.delayRiskProbability != null ? (
                     <><ShieldAlert size={15} /> {(ticket.aiSignals.delayRiskProbability * 100).toFixed(0)}% risk</>
                   ) : (
@@ -690,6 +693,9 @@ export function TicketDetailPage() {
                 </div>
                 <Link className="button button-ghost button-full" to="/app/triage" state={{ ticket }}>
                   Run full workload decision flow <ArrowRight size={15} />
+                </Link>
+                <Link className="button button-secondary button-full" to="/app/recommendations" state={{ ticketId: ticket.id }}>
+                  Open in Recommendation Engine <ArrowRight size={15} />
                 </Link>
               </Card>
             )}
