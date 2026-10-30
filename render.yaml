@@ -4,7 +4,7 @@ services:
     runtime: node
     region: singapore
     plan: free
-    buildCommand: npm ci --prefix server && npm --prefix server run build
+    buildCommand: npm ci --include=dev --prefix server && npm --prefix server run build
     startCommand: npm --prefix server start
     healthCheckPath: /api/v1/health
     envVars:
