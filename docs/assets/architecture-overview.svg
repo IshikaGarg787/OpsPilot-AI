@@ -1,0 +1,178 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 1080" role="img" aria-labelledby="title description">
+  <title id="title">OpsPilot AI ticket and recommendation architecture</title>
+  <desc id="description">Customer, IT Team, and Admin use the OpsPilot website. The Express API checks permissions, stores workspace data in MongoDB, and calls the delay-risk and resolution/workload model services. An Admin reviews an explained recommendation and confirms any action. Workload history enters through a CSV upload.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#52677d"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#3972b5"/>
+    </marker>
+    <style>
+      text { font-family: Inter, "Segoe UI", Arial, sans-serif; fill: #182a3a; }
+      .title { font-size: 31px; font-weight: 750; }
+      .subtitle { font-size: 16px; fill: #536779; }
+      .step { font-size: 13px; font-weight: 750; letter-spacing: 1.5px; fill: #52677d; }
+      .card { fill: #ffffff; stroke: #cbd7e2; stroke-width: 1.5; }
+      .blue { fill: #eff6ff; stroke: #8fb4d8; }
+      .teal { fill: #eef7f4; stroke: #8fb8aa; }
+      .amber { fill: #fff7eb; stroke: #d9b77e; }
+      .soft { fill: #f4f7fa; stroke: #d3dde6; }
+      .heading { font-size: 19px; font-weight: 700; }
+      .body { font-size: 15px; fill: #405466; }
+      .small { font-size: 13px; fill: #52677d; }
+      .tag { font-size: 12px; font-weight: 700; letter-spacing: .5px; }
+      .line { fill: none; stroke: #52677d; stroke-width: 2.5; marker-end: url(#arrow); }
+      .lineBlue { fill: none; stroke: #3972b5; stroke-width: 2.5; marker-end: url(#arrowBlue); }
+      .dashed { fill: none; stroke: #7b6a95; stroke-width: 2.2; stroke-dasharray: 7 6; marker-end: url(#arrow); }
+      .divider { stroke: #dce4eb; stroke-width: 1; }
+      .number { font-size: 14px; font-weight: 800; fill: #ffffff; }
+    </style>
+  </defs>
+
+  <rect width="1500" height="1080" fill="#f5f8fb"/>
+  <text x="54" y="58" class="title">How OpsPilot turns support tickets into reviewable decisions</text>
+  <text x="54" y="88" class="subtitle">Actual application components and data paths · model suggestions stay under human control</text>
+
+  <!-- Main application path -->
+  <circle cx="62" cy="143" r="15" fill="#52677d"/><text x="58" y="148" class="number">1</text>
+  <text x="88" y="148" class="step">PEOPLE AND APP</text>
+  <circle cx="375" cy="143" r="15" fill="#3972b5"/><text x="371" y="148" class="number">2</text>
+  <text x="401" y="148" class="step">ACCESS AND TICKET HANDLING</text>
+  <circle cx="1095" cy="143" r="15" fill="#89765b"/><text x="1091" y="148" class="number">3</text>
+  <text x="1121" y="148" class="step">SAVED WORKSPACE DATA</text>
+
+  <rect x="45" y="170" width="240" height="278" rx="15" class="card"/>
+  <text x="68" y="205" class="heading">People</text>
+  <line x1="68" y1="220" x2="262" y2="220" class="divider"/>
+  <rect x="66" y="237" width="198" height="52" rx="9" class="soft"/>
+  <text x="82" y="259" class="body" font-weight="700">Customer</text>
+  <text x="82" y="278" class="small">Raises and follows own tickets</text>
+  <rect x="66" y="301" width="198" height="52" rx="9" class="soft"/>
+  <text x="82" y="323" class="body" font-weight="700">IT Team</text>
+  <text x="82" y="342" class="small">Updates created or assigned work</text>
+  <rect x="66" y="365" width="198" height="52" rx="9" class="soft"/>
+  <text x="82" y="387" class="body" font-weight="700">Admin</text>
+  <text x="82" y="406" class="small">Reviews the workspace queue</text>
+
+  <rect x="340" y="170" width="285" height="278" rx="15" class="card blue"/>
+  <rect x="340" y="170" width="285" height="9" rx="5" fill="#3972b5"/>
+  <text x="365" y="211" class="tag" fill="#3972b5">WEB APP · VERCEL</text>
+  <text x="365" y="245" class="heading">OpsPilot workspace</text>
+  <text x="365" y="279" class="body">React + TypeScript</text>
+  <text x="365" y="304" class="body">Role-based dashboards and</text>
+  <text x="365" y="325" class="body">ticket, forecast, and admin pages</text>
+  <line x1="365" y1="345" x2="600" y2="345" class="divider"/>
+  <text x="365" y="373" class="small">Shows results and asks a person</text>
+  <text x="365" y="393" class="small">to confirm operational changes.</text>
+
+  <rect x="680" y="170" width="365" height="278" rx="15" class="card teal"/>
+  <rect x="680" y="170" width="365" height="9" rx="5" fill="#28776c"/>
+  <text x="706" y="211" class="tag" fill="#28776c">BACKEND API · RENDER</text>
+  <text x="706" y="245" class="heading">Express API</text>
+  <text x="706" y="279" class="body">Checks sign-in and role permissions</text>
+  <text x="706" y="304" class="body">Validates requests and manages tickets</text>
+  <text x="706" y="329" class="body">Calls prediction services and saves results</text>
+  <line x1="706" y1="349" x2="1018" y2="349" class="divider"/>
+  <text x="706" y="377" class="small">The browser does not connect directly</text>
+  <text x="706" y="397" class="small">to the database or model services.</text>
+
+  <rect x="1095" y="170" width="360" height="278" rx="15" class="card"/>
+  <rect x="1095" y="170" width="360" height="9" rx="5" fill="#89765b"/>
+  <text x="1120" y="211" class="tag" fill="#89765b">DATABASE</text>
+  <text x="1120" y="245" class="heading">MongoDB</text>
+  <text x="1120" y="279" class="body">Users and sessions</text>
+  <text x="1120" y="304" class="body">Tickets, replies, and attachments</text>
+  <text x="1120" y="329" class="body">SLA events, predictions, decisions</text>
+  <line x1="1120" y1="349" x2="1430" y2="349" class="divider"/>
+  <text x="1120" y="377" class="small">Stores workspace records and the</text>
+  <text x="1120" y="397" class="small">Admin decision audit trail.</text>
+
+  <path d="M285 306H340" class="line"/>
+  <text x="293" y="293" class="small">uses</text>
+  <path d="M625 306H680" class="lineBlue"/>
+  <text x="627" y="292" class="small">HTTPS</text>
+  <path d="M1045 306H1095" class="line" marker-start="url(#arrow)"/>
+  <text x="1047" y="280" class="small">read / save</text>
+
+  <!-- Model services -->
+  <circle cx="62" cy="502" r="15" fill="#28776c"/><text x="58" y="507" class="number">4</text>
+  <text x="88" y="507" class="step">PREDICTION SERVICES · CALLED BY THE API</text>
+
+  <rect x="45" y="535" width="245" height="190" rx="15" class="card amber"/>
+  <text x="68" y="570" class="tag" fill="#a66e28">HISTORY INPUT</text>
+  <text x="68" y="603" class="heading">Daily ticket counts</text>
+  <text x="68" y="635" class="body">Queue history or help-desk CSV</text>
+  <text x="68" y="657" class="body">date,ticket_count</text>
+  <text x="68" y="685" class="small">Standalone: 120 real days needed</text>
+  <text x="68" y="706" class="small">Engine labels bootstrap dates</text>
+
+  <rect x="365" y="535" width="355" height="190" rx="15" class="card"/>
+  <rect x="365" y="535" width="8" height="190" rx="4" fill="#d46a35"/>
+  <text x="391" y="570" class="tag" fill="#b9572b">MODEL 1 · DELAY RISK</text>
+  <text x="391" y="605" class="heading">FastAPI service</text>
+  <text x="391" y="638" class="body">Scores supported ticket fields</text>
+  <text x="391" y="661" class="body">Returns a probability and risk band</text>
+  <text x="391" y="695" class="small">Complaint text is not a model input</text>
+
+  <rect x="770" y="535" width="410" height="190" rx="15" class="card blue"/>
+  <rect x="770" y="535" width="8" height="190" rx="4" fill="#3972b5"/>
+  <text x="796" y="570" class="tag" fill="#3972b5">MODEL 2 · RESOLUTION + WORKLOAD</text>
+  <text x="796" y="605" class="heading">FastAPI service</text>
+  <text x="796" y="638" class="body">Resolution model → estimated hours</text>
+  <text x="796" y="661" class="body">Workload model → incoming ticket volume</text>
+  <text x="796" y="695" class="small">Forecast horizon: 7 or 14 days</text>
+
+  <rect x="1230" y="535" width="225" height="190" rx="15" class="card soft"/>
+  <text x="1252" y="570" class="tag" fill="#6e5b88">OPTIONAL CHAT</text>
+  <text x="1252" y="605" class="heading">Support helper</text>
+  <text x="1252" y="638" class="body">Role-scoped ticket</text>
+  <text x="1252" y="660" class="body">lookup + built-in help</text>
+  <text x="1252" y="694" class="small">Ollama fallback is local</text>
+
+  <path d="M835 448V485H542V535" class="lineBlue" marker-start="url(#arrowBlue)"/>
+  <rect x="618" y="463" width="116" height="27" rx="13" fill="#f5f8fb"/>
+  <text x="628" y="482" class="small">risk request / result</text>
+  <path d="M900 448V500H975V535" class="lineBlue" marker-start="url(#arrowBlue)"/>
+  <rect x="912" y="463" width="150" height="27" rx="13" fill="#f5f8fb"/>
+  <text x="920" y="482" class="small">estimate / forecast</text>
+  <path d="M290 630H315V423H680" class="line"/>
+  <rect x="420" y="398" width="132" height="27" rx="13" fill="#f5f8fb"/>
+  <text x="432" y="417" class="small">CSV upload to API</text>
+  <path d="M1045 448V485H1340V535" class="dashed"/>
+  <text x="1160" y="477" class="small">support questions</text>
+
+  <!-- Explainable recommendation and human action -->
+  <circle cx="62" cy="789" r="15" fill="#a66e28"/><text x="58" y="794" class="number">5</text>
+  <text x="88" y="794" class="step">ADMIN DECISION · THE RECOMMENDATION ENGINE IS RULES, NOT A THIRD ML MODEL</text>
+
+  <rect x="45" y="825" width="1410" height="180" rx="16" class="card amber"/>
+  <rect x="68" y="849" width="335" height="130" rx="12" fill="#ffffff" stroke="#e4d1b2"/>
+  <text x="91" y="883" class="tag" fill="#a66e28">INPUTS</text>
+  <text x="91" y="914" class="body">Risk + resolution estimate</text>
+  <text x="91" y="940" class="body">SLA pressure + ticket age</text>
+  <text x="91" y="966" class="body">Comparable ticket history</text>
+
+  <path d="M403 914H465" class="line"/>
+
+  <rect x="466" y="849" width="390" height="130" rx="12" fill="#ffffff" stroke="#e4d1b2"/>
+  <text x="490" y="883" class="tag" fill="#a66e28">EXPLAINED SUGGESTION</text>
+  <text x="490" y="914" class="body">Priority score + factor contributions</text>
+  <text x="490" y="940" class="body">SHAP-style breakdown + LIME explanation</text>
+  <text x="490" y="966" class="small">Shows why a ticket was flagged</text>
+
+  <path d="M856 914H918" class="line"/>
+
+  <rect x="919" y="849" width="510" height="130" rx="12" fill="#ffffff" stroke="#e4d1b2"/>
+  <text x="943" y="883" class="tag" fill="#a66e28">HUMAN CONFIRMATION</text>
+  <text x="943" y="914" class="body">Admin reviews, then accepts, edits, or dismisses</text>
+  <text x="943" y="940" class="body">API saves the chosen action and audit event</text>
+  <text x="943" y="966" class="small">No automatic assignment or priority change</text>
+
+  <path d="M542 725V760" class="line"/>
+  <path d="M960 725V760H235V825" class="line"/>
+  <rect x="468" y="745" width="250" height="29" rx="14" fill="#f5f8fb"/>
+  <text x="481" y="765" class="small">model results + current ticket context</text>
+
+  <text x="45" y="1043" class="small">Solid arrows: normal data flow · Dashed arrow: optional support-chat connection · Predictions are advisory, not guarantees.</text>
+</svg>
