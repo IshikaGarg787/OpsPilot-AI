@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Activity, AlertTriangle, CalendarClock, Check, Database, Download, FileSpreadsheet, FileUp, RefreshCw, TrendingUp } from 'lucide-react';
+import { Activity, AlertTriangle, ArrowRight, CalendarClock, Check, Database, Download, FileSpreadsheet, FileUp, RefreshCw, TrendingUp } from 'lucide-react';
 import { Area, Bar, BarChart, CartesianGrid, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Link } from 'react-router-dom';
 import { api, ApiError } from '../services/api';
 import type { WorkloadForecastResult } from '../types';
 import { aggregateWorkloadHistory, blankWorkloadTemplate, dailyRecordsCsv, parseCsv } from '../utils/workloadHistory';
@@ -54,6 +55,7 @@ export function WorkloadForecastPage() {
 
   return <div className="page-stack workload-page">
     <div className="page-intro"><div><span className="eyebrow">LIVE DATA · MODEL 03</span><h1>Workload forecasting</h1><p>Estimate incoming ticket volume for the next 7 or 14 days. No complaint text is needed.</p></div><span className={`status-pill forecast-engine-status ${serviceStatus}`} role="status" aria-live="polite"><span className="pulse-dot" />{serviceStatus === 'checking' ? 'Checking forecast engine' : serviceStatus === 'available' ? 'Forecast engine ready' : 'Forecast engine offline'}</span></div>
+    <div className="workload-recommendation-link"><span>Use the forecast alongside ticket risk and SLA recommendations.</span><Link to="/app/recommendations">Review ticket recommendations <ArrowRight size={15} /></Link></div>
     <section className="panel workload-source-panel">
       <div className="panel-heading"><div><h2>Choose your ticket history</h2><p>Use existing OpsPilot tickets or import older daily totals from your help desk. These are two ways to provide the same forecast input.</p></div><label className="forecast-horizon-control">Forecast period<select value={horizon} onChange={(event) => setHorizon(Number(event.target.value) as 7 | 14)}><option value={7}>Next 7 days</option><option value={14}>Next 14 days</option></select></label></div>
       <div className="forecast-source-choices" role="group" aria-label="Choose ticket history source">
