@@ -131,7 +131,7 @@ export function RecommendationEnginePage() {
         <div className="recommendation-result-details"><div><span>Suggested priority</span><strong>{result.recommendation.recommendedPriority}</strong></div><div><span>Assignee option</span><strong>{result.recommendation.assignee ? `${result.recommendation.assignee.name} · ${result.recommendation.assignee.activeTickets} active tickets` : 'No available teammate suggestion'}</strong></div><div><span>Official SLA</span><strong>{result.sla ? `Response ${readable(result.sla.response.status)} · Resolution ${readable(result.sla.resolution.status)}` : 'No SLA snapshot available'}</strong></div></div>
       </Card>
       {result.risk.explanation && <Card title="Why the risk score looks this way"><p>{result.risk.explanation.summary}</p>{result.risk.explanation.historical_evidence.map((item) => <p className="recommendation-evidence-row" key={item.factor}><strong>{readable(item.factor)} · {item.value}</strong><span>{(item.historical_delay_rate * 100).toFixed(1)}% delayed across {item.historical_tickets.toLocaleString()} earlier tickets</span></p>)}<small className="field-help">{result.risk.explanation.interpretation}</small></Card>}
-      <div className="recommendation-result-actions"><button className="button button-primary" type="button" onClick={() => { setAnalysisResult(null); window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }}>Review recommendations <ArrowRight size={15} /></button><Link className="button button-ghost" to={selected ? `/app/tickets/${selected.id}` : '/app/tickets'}>Open ticket <ArrowRight size={14} /></Link><Link className="button button-ghost" to="/app/workload-forecasting">Open workload forecast <ArrowRight size={14} /></Link></div>
+      <div className="recommendation-result-actions"><button className="button button-primary" type="button" onClick={() => { setAnalysisResult(null); window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }}>Review recommendations <ArrowRight size={15} /></button><Link className="button button-ghost" to={selected ? `/app/tickets/${selected.id}` : '/app/tickets'}>Open ticket <ArrowRight size={14} /></Link></div>
     </div>;
   }
 
@@ -186,8 +186,7 @@ export function RecommendationEnginePage() {
 
         <Card title="Priority review" className="recommendation-function-card">
           <div className="recommendation-function-heading"><ShieldAlert size={18} /><span>Suggested priority</span><strong>{selected.aiSignals?.recommendedPriority ?? 'Not calculated'}</strong></div>
-          <p>Current priority: {selected.priority}. Confirm the ticket’s customer impact before applying a suggested change.</p>
-          <button className="button button-secondary button-small" disabled={busy || !selected.aiSignals?.recommendedPriority || selected.aiSignals.recommendedPriority.toLowerCase() === selected.priority.toLowerCase()} onClick={() => void updateTicket(() => api.tickets.updatePriority(selected.id, selected.aiSignals!.recommendedPriority!, decisionNote.trim() || 'Admin accepted the recommendation engine priority suggestion.'), 'Suggested priority applied and recorded.')}>Apply suggested priority</button>
+          <p>Current priority: {selected.priority}. Ticket priorities are assigned automatically from the available model signals and cannot be manually overridden.</p>
         </Card>
 
         <Card title="SLA and workload context" className="recommendation-function-card">
@@ -197,7 +196,6 @@ export function RecommendationEnginePage() {
             <div><BarChart3 size={16} /><span>Workload forecast</span><strong>{selected.workloadOutlook?.expectedTickets != null ? `${Math.round(selected.workloadOutlook.expectedTickets)} tickets / ${selected.workloadOutlook.horizon ?? '?'} days` : 'Not calculated'}</strong></div>
             <div><BarChart3 size={16} /><span>High-load days</span><strong>{selected.workloadOutlook?.highLoadDays ?? '—'}</strong></div>
           </div>
-          <Link className="button button-ghost button-small" to="/app/workload-forecasting">Open workload forecast <ArrowRight size={14} /></Link>
         </Card>
       </section>}
     </>}

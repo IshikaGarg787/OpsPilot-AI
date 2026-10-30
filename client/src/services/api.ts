@@ -1,4 +1,4 @@
-import type { CustomerDashboardData, CustomerTicketPage, DashboardActivity, DashboardSummary, ModelInfo, ModelMetadata, OperationsDashboardData, PaginatedPredictions, Prediction, ResolutionRecommendation, SlaEvent, SlaOverview, SlaPolicy, ThemePreference, Ticket, TicketStatus, TriageResult, User, WorkloadForecastHealth, WorkloadForecastResult } from '../types';
+import type { CustomerDashboardData, CustomerTicketPage, DashboardActivity, DashboardSummary, ModelInfo, ModelMetadata, OperationsDashboardData, PaginatedPredictions, Prediction, ResolutionRecommendation, SlaEvent, SlaOverview, SlaPolicy, ThemePreference, Ticket, TicketStatus, TriageResult, User, WorkforceMember, WorkforceTicketPage, WorkloadForecastHealth, WorkloadForecastResult } from '../types';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000/api/v1').replace(/\/$/, '');
 
@@ -33,7 +33,9 @@ export const api = {
   users: {
     updateProfile: (name: string) => request<{ user: User }>('/users/me', { method: 'PATCH', body: JSON.stringify({ name }) }),
     updatePreferences: (themePreference: ThemePreference) => request<{ user: User }>('/users/me/preferences', { method: 'PATCH', body: JSON.stringify({ themePreference }) }),
-    updateItProfile: (payload: { skills: string[]; availability: 'available' | 'unavailable' }) => request<{ profile: { skills: string[]; availability: 'available' | 'unavailable' } }>('/users/me/it-profile', { method: 'PATCH', body: JSON.stringify(payload) }),
+    updateItProfile: (payload: { skills: string[] }) => request<{ profile: { skills: string[] } }>('/users/me/it-profile', { method: 'PATCH', body: JSON.stringify(payload) }),
+    workforce: () => request<{ workers: WorkforceMember[] }>('/users/workforce'),
+    workforceTickets: (userId: string, kind: 'assigned' | 'raised', page = 1, pageSize = 10) => request<WorkforceTicketPage>(`/users/workforce/${userId}/tickets?kind=${kind}&page=${page}&pageSize=${pageSize}`),
   },
   dashboard: {
     summary: () => request<DashboardSummary>('/dashboard/summary'),
@@ -73,10 +75,9 @@ export const api = {
     respond: (id: string, payload: { message: string; visibility: 'public' | 'internal'; resolutionNote?: string }) => request<{ ticket: Ticket }>(`/tickets/${id}/responses`, { method: 'POST', body: JSON.stringify(payload) }),
     updateStatus: (id: string, payload: { status: string; resolutionNote?: string; delayExplanation?: string }) => request<{ ticket: Ticket }>(`/tickets/${id}/status`, { method: 'PATCH', body: JSON.stringify(payload) }),
     assign: (id: string, assigneeId: string) => request<{ ticket: Ticket }>(`/tickets/${id}/assignment`, { method: 'PATCH', body: JSON.stringify({ assigneeId }) }),
-    updatePriority: (id: string, priority: string, note: string) => request<{ ticket: Ticket }>(`/tickets/${id}/priority`, { method: 'PATCH', body: JSON.stringify({ priority, note }) }),
     decideRecommendation: (id: string, payload: { decision: 'approved' | 'rejected' | 'modified'; action?: 'priority_review' | 'standard_queue'; note: string }) => request<{ ticket: Ticket }>(`/tickets/${id}/recommendation-decision`, { method: 'POST', body: JSON.stringify(payload) }),
-    assignees: () => request<{ users: Array<{ id: string; name: string; email: string; skills: string[]; activeTickets: number; availability: 'available' | 'busy' | 'unavailable' }> }>('/tickets/assignees'),
-    users: () => request<{ users: Array<{ id: string; name: string; email: string; role: string; createdAt: string; skills?: string[]; activeTickets?: number; availability?: 'available' | 'busy' | 'unavailable'; setupPending?: boolean }> }>('/users'),
+    assignees: () => request<{ users: Array<{ id: string; name: string; email: string; skills: string[]; activeTickets: number; availability: 'available' | 'unavailable' }> }>('/tickets/assignees'),
+    users: () => request<{ users: Array<{ id: string; name: string; email: string; role: string; createdAt: string; skills?: string[]; activeTickets?: number; availability?: 'available' | 'unavailable'; setupPending?: boolean }> }>('/users'),
     setRole: (userId: string, role: 'customer' | 'it_team') => request<{ user: User }>(`/users/${userId}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
     createItUser: (payload: { name: string; email: string }) => request<{ user: { id: string; name: string; email: string; role: 'it_team' }; setupToken: string }>('/users/it-team', { method: 'POST', body: JSON.stringify(payload) }),
     uploadAttachment: async (ticketId: string, file: File) => {

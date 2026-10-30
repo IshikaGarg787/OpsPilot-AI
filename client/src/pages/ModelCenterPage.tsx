@@ -56,8 +56,8 @@ export function ModelCenterPage() {
             <h2>{model.displayName}</h2>
             <p>{model.description.replace(/model\?Ts/g, "model's")}</p>
             {model.id === 'workload-forecasting' ? (
-              <Link className="card-link registry-action" to="/app/workload-forecasting">
-                Open forecaster <ArrowRight size={15} />
+              <Link className="card-link registry-action" to="/app/triage">
+                Used in integrated pipeline <ArrowRight size={15} />
               </Link>
             ) : model.status === 'available' ? (
               <Link className="card-link registry-action" to={model.id === 'operational-risk' ? '/app/triage' : '/app/resolution-time'}>

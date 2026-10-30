@@ -721,6 +721,15 @@ html, body, #root { max-width: 100%; min-width: 0; overflow-x: clip; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
 
+/* Workforce filters and app breadcrumb navigation */
+.workforce-roster-toolbar { align-items:end; border-bottom:1px solid var(--border); display:flex; flex-wrap:wrap; gap:10px 16px; justify-content:space-between; padding:0 21px 14px; }
+.workforce-roster-toolbar .field { margin:0; max-width:260px; width:100%; }
+.workforce-roster-toolbar .field-help { margin:0 0 8px; }
+.workforce-detail-actions { align-items:center; display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
+.topbar .breadcrumb-link { border-radius:4px; color:var(--muted); text-decoration:none; transition:color .16s ease; }
+.topbar .breadcrumb-link:hover,.topbar .breadcrumb-link:focus-visible { color:var(--blue); text-decoration:underline; text-underline-offset:3px; }
+@media(max-width:620px) { .workforce-roster-toolbar { align-items:stretch; flex-direction:column; padding-left:16px; padding-right:16px; }.workforce-roster-toolbar .field { max-width:none; }.workforce-roster-toolbar .field-help { margin:0; }.workforce-detail-actions { justify-content:flex-start; } }
+
 /* Customer and IT Team support assistant */
 .support-chat-widget { position: fixed; z-index: 80; right: max(22px, env(safe-area-inset-right)); bottom: max(22px, env(safe-area-inset-bottom)); }
 .support-chat-launcher { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 52px; padding: 0 19px; border: 1px solid color-mix(in srgb, var(--blue) 45%, transparent); border-radius: 28px; background: var(--blue-strong); box-shadow: 0 12px 34px rgba(18, 46, 100, .32); color: #fff; font: inherit; font-size: .88rem; font-weight: 750; cursor: pointer; transition: transform .18s ease, box-shadow .18s ease; }
@@ -1584,3 +1593,72 @@ body { background: var(--bg); color: var(--text); }
 @media (max-width: 950px) { .recommendation-engine-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }.recommendation-history-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 950px) { .recommendation-results-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }.recommendation-result-details { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 680px) { .recommendation-functions, .recommendation-results-grid { grid-template-columns: minmax(0, 1fr); }.recommendation-history-stats { grid-template-columns: minmax(0, 1fr); }.recommendation-page-actions { width: 100%; }.recommendation-page-actions .button { flex: 1; }.recommendation-ticket-meta a { margin-left: 0; }.recommendation-result-actions { align-items: stretch; flex-direction: column; }.recommendation-result-actions .button { justify-content: center; } }
+
+/* Admin workforce roster */
+.workforce-roster-card { overflow:hidden; padding:0; }
+.workforce-roster-card > .card-heading { margin:0; padding:18px 21px; }
+.workforce-table-wrap { overflow-x:auto; width:100%; }
+.workforce-table { border-collapse:collapse; min-width:790px; text-align:left; width:100%; }
+.workforce-table th { background:var(--surface-raised); color:var(--muted); font-size:.67rem; font-weight:700; letter-spacing:.055em; padding:11px 16px; text-transform:uppercase; white-space:nowrap; }
+.workforce-table td { border-top:1px solid var(--border); color:var(--text-soft); font-size:.78rem; padding:12px 16px; vertical-align:middle; white-space:nowrap; }
+.workforce-table tbody tr { cursor:pointer; outline:none; transition:background .16s ease; }
+.workforce-table tbody tr:hover,.workforce-table tbody tr:focus-visible { background:var(--surface-raised); }
+.workforce-table tbody tr.selected { background:color-mix(in srgb,var(--blue) 8%,var(--surface)); box-shadow:inset 3px 0 var(--blue); }
+.workforce-table td:first-child { min-width:230px; }
+.workforce-person-cell { align-items:center; display:flex; gap:10px; }
+.workforce-person-cell > span:last-child { display:grid; gap:3px; min-width:0; }
+.workforce-person-cell strong { color:var(--text); font-size:.8rem; }
+.workforce-person-cell small { color:var(--muted); font-size:.68rem; }
+.workforce-member-avatar { align-items:center; background:var(--surface-soft); border:1px solid var(--border); border-radius:50%; color:var(--blue); display:flex; font-weight:800; height:42px; justify-content:center; width:42px; }
+.workforce-member-avatar { flex:0 0 38px; height:38px; width:38px; }
+.workforce-number-cell { align-items:center; color:var(--text); display:inline-flex; font-variant-numeric:tabular-nums; gap:7px; justify-content:flex-start; min-width:52px; }
+.workforce-number-cell svg { color:var(--muted); }
+.workforce-breach-cell svg { color:var(--amber); }
+.workforce-met-cell svg { color:var(--teal); }
+.workforce-profile-meta { color:var(--muted); font-size:.72rem; }
+.workforce-profile-meta span { align-items:center; display:inline-flex; gap:5px; }
+.workforce-detail { display:grid; gap:14px; }
+.workforce-profile-meta { display:flex; flex-wrap:wrap; gap:8px 18px; margin-bottom:15px; }
+.workforce-metrics { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.workforce-capacity-summary { align-items:stretch; display:grid; gap:10px; grid-template-columns:repeat(2,minmax(0,1fr)); margin-bottom:12px; }
+.workforce-capacity-summary > div { background:var(--surface-raised); border:1px solid var(--border); border-radius:11px; display:grid; gap:7px; padding:13px; }
+.workforce-capacity-summary > div span { color:var(--muted); font-size:.7rem; }
+.workforce-capacity-summary > div strong { font-size:1.4rem; font-variant-numeric:tabular-nums; }
+.workforce-capacity-forecast { display:grid; gap:9px; margin:14px 0 3px; }
+.workforce-capacity-day { align-items:center; display:grid; gap:10px; grid-template-columns:92px minmax(0,1fr) 44px; }
+.workforce-capacity-day > span { color:var(--muted); font-size:.7rem; }
+.workforce-capacity-day > div { background:var(--surface-raised); border-radius:99px; height:8px; overflow:hidden; }
+.workforce-capacity-day i { background:var(--blue); border-radius:inherit; display:block; height:100%; }
+.workforce-capacity-day > strong { font-family:'IBM Plex Mono',monospace; font-size:.7rem; text-align:right; }
+.workforce-ticket-list { display:grid; gap:8px; }
+.workforce-ticket-row { align-items:center; background:var(--surface-raised); border:1px solid var(--border); border-radius:11px; display:grid; gap:12px; grid-template-columns:100px minmax(0,1fr) auto; padding:11px 13px; }
+.workforce-ticket-row > strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.workforce-ticket-id { color:var(--blue); font-family:'IBM Plex Mono',monospace; font-size:.74rem; }
+.workforce-raised-ticket { background:var(--surface-raised); border:1px solid var(--border); border-radius:12px; padding:10px; }
+.workforce-raised-ticket .workforce-ticket-row { background:transparent; border:0; padding:2px; grid-template-columns:100px minmax(0,1fr) auto auto; }
+.workforce-resolve-trigger { margin:10px 0 0 102px; }
+.workforce-resolve-form { border-top:1px solid var(--border); display:grid; gap:10px; margin-top:10px; padding:12px 2px 2px; }
+.workforce-resolve-actions,.workforce-ticket-pagination,.workforce-ticket-pagination > div { align-items:center; display:flex; gap:8px; }
+.workforce-resolve-actions,.workforce-ticket-pagination { justify-content:flex-end; }
+.workforce-ticket-pagination { color:var(--muted); font-size:.75rem; margin-top:12px; }
+.workforce-ticket-pagination > div { margin-left:auto; }
+.ticket-queue-priority-filter { margin:0; min-width:150px; }
+.ticket-queue-priority-filter > span { display:none; }
+.ticket-admin-queues { align-items:start; display:grid; gap:14px; grid-template-columns:repeat(2,minmax(0,1fr)); }
+.ticket-admin-queue-card { min-width:0; }
+.ticket-admin-queue-card .card-heading { align-items:center; border-bottom:1px solid var(--border); flex-wrap:wrap; gap:9px 12px; margin:0; min-height:62px; padding:15px 20px; }
+.ticket-admin-queue-card .card-heading h2 { flex:1 1 160px; font-size:.98rem; min-width:0; overflow-wrap:anywhere; white-space:normal; }
+.ticket-queue-count { background:var(--surface-raised); border:1px solid var(--border); border-radius:999px; color:var(--text-soft); font-size:.72rem; font-weight:700; padding:5px 9px; white-space:nowrap; }
+.ticket-queue-caption { color:var(--muted); font-size:.74rem; line-height:1.5; margin:0 0 14px; padding:14px 20px 0; }
+.ticket-admin-queue-card .ticket-list { gap:8px; }
+.ticket-admin-queue-card .ticket-row { grid-template-areas:"icon main status" "icon signal signal"; grid-template-columns:36px minmax(0,1fr) auto; padding:13px; }
+.ticket-admin-queue-card .ticket-row-main { min-width:0; }
+.ticket-admin-queue-card .ticket-row-main strong { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+.ticket-admin-queue-card .ticket-row-ai { grid-area:signal; justify-self:start; }
+.ticket-admin-queue-card .ticket-row-arrow { display:none; }
+.ticket-queue-pagination { align-items:center; border-top:1px solid var(--border); box-sizing:border-box; color:var(--muted); display:flex; flex-wrap:wrap; font-size:.7rem; gap:12px; justify-content:space-between; margin-top:14px; padding:13px 16px 14px; width:100%; }
+.ticket-queue-pagination > div { align-items:center; display:flex; flex-wrap:wrap; gap:7px; }
+.ticket-queue-pagination > div > span { font-variant-numeric:tabular-nums; padding:0 3px; white-space:nowrap; }
+@media(max-width:900px) { .workforce-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:900px) { .ticket-admin-queues { grid-template-columns:minmax(0,1fr); } }
+@media(max-width:620px) { .workforce-capacity-summary { grid-template-columns:minmax(0,1fr); }.ticket-queue-priority-filter { flex:1; }.workforce-ticket-row,.workforce-raised-ticket .workforce-ticket-row { grid-template-columns:minmax(0,1fr) auto; }.workforce-ticket-row > strong { grid-column:1 / -1; grid-row:2; white-space:normal; }.workforce-raised-ticket .workforce-ticket-row > strong { grid-column:1 / -1; grid-row:auto; }.workforce-resolve-trigger { margin-left:0; }.ticket-admin-queue-card .card-heading { margin:0; padding:13px 16px; }.ticket-queue-caption { padding-left:16px; padding-right:16px; }.ticket-admin-queue-card .ticket-row { grid-template-areas:"icon main status" "icon signal signal"; grid-template-columns:30px minmax(0,1fr) auto; padding:11px; }.ticket-queue-pagination { align-items:flex-start; flex-direction:column; padding:12px 16px 15px; }.ticket-queue-pagination > div { justify-content:space-between; width:100%; } }
