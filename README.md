@@ -28,7 +28,7 @@ Ticket and integrated-pipeline requests go through Express; completed model outp
 
 ## Quick start — Windows PowerShell
 
-Prerequisites: Node.js 20 or newer, Python 3.12, and MongoDB. Docker Desktop is an easy way to run the local database; an existing MongoDB instance also works.
+Prerequisites for the manual setup: Node.js 20 or newer, Python 3.12, and MongoDB. To run the entire application in Docker, use the [Docker Compose guide](docs/DOCKER_COMPOSE.md); it needs Docker Desktop and serves the app at one local URL.
 
 ```powershell
 # From the repository root
@@ -51,7 +51,7 @@ npm run db:up
 npm run dev
 ```
 
-`npm run db:up` starts a local MongoDB container and waits for its health check. The database port is bound to localhost only. `npm run db:down` stops it without deleting saved data.
+`npm run db:up` starts a local MongoDB container and waits for its health check. The database port is bound to localhost only. `npm run db:down` stops it without deleting saved data. For a fully containerized app, follow [`docs/DOCKER_COMPOSE.md`](docs/DOCKER_COMPOSE.md).
 
 Provision the single Admin owner with the protected setup command documented in [`docs/database-architecture.md`](docs/database-architecture.md); public signup cannot create an Admin. The services use ports 8000 (resolution/workload), 8001 (delay risk), 5000 (Express), and 5173 (Vite). Open `http://localhost:5173`.
 
