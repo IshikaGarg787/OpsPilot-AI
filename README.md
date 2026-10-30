@@ -1,10 +1,10 @@
-# OpsPilot AI
+# OpsPilot AI — Turn ticket history into clearer support decisions
 
 <p align="center">
   <img src="client/public/assets/opspilot-mark.png" alt="OpsPilot AI logo" width="150" />
 </p>
 
-<h3 align="center">A clearer way to handle support work.</h3>
+<h3 align="center">One workspace for tickets, delay risk, resolution estimates, and workload planning.</h3>
 
 OpsPilot AI is a help-desk operations app. Customers and IT staff use it to manage support tickets. Admins use it to review the queue, understand possible delays, estimate resolution time, and plan incoming workload. The app gives people evidence to make decisions; it does not silently assign staff or change a ticket’s priority for them.
 
@@ -40,47 +40,15 @@ Public sign-up does not create an Admin account. Admin access is provisioned by 
 4. The Admin decides whether to accept, change, or dismiss a suggestion. Any assignment or priority change is a separate, human-confirmed action.
 5. Workload Forecasting uses ticket counts over time to estimate how many new tickets may arrive. It helps with planning; it does not decide staffing levels.
 
-## Architecture at a glance
+## How a ticket becomes an actionable decision
 
-This is a map of the main pieces. The browser talks to the backend API. The API checks who the user is, talks to the database and model services, and sends the result back to the browser.
+Follow the numbered path: people use the role-based website; the API checks access and handles the request; MongoDB stores operational records; the two model services return separate predictions; then the Admin reviews an explained suggestion and confirms any action. Workload history and the optional support assistant are shown as separate paths so their roles are clear.
 
-```mermaid
-flowchart LR
-  subgraph PEOPLE[People]
-    C[Customer]
-    IT[IT Team]
-    AD[Admin]
-  end
+<p align="center">
+  <img src="docs/assets/architecture-overview.svg" alt="OpsPilot architecture: Customer, IT Team, and Admin use the Vercel web app, which sends requests to the Express API. The API stores data in MongoDB and calls the delay-risk and resolution/workload model services. An Admin reviews explainable recommendations and confirms actions. CSV history feeds workload forecasts." width="100%" />
+</p>
 
-  subgraph FRONT[Website · Vercel]
-    UI[React + TypeScript + Vite]
-  end
-
-  subgraph SERVER[Backend · Render]
-    API[Express API\nSign-in · permissions · tickets · recommendations]
-  end
-
-  DB[(MongoDB\nUsers · tickets · replies · SLA · predictions)]
-
-  subgraph MODELS[Prediction services · Render]
-    M1[Model 1 · Delay risk\nProbability and risk band]
-    M2[Model 2 · Resolution and workload\nHours estimate and ticket-volume forecast]
-  end
-
-  CHAT[Optional local Ollama\nSupport assistant fallback]
-
-  C --> UI
-  IT --> UI
-  AD --> UI
-  UI <-->|HTTPS · session cookie · API requests| API
-  API <--> DB
-  API --> M1
-  API --> M2
-  API -. optional .-> CHAT
-```
-
-**In plain English:** the website displays forms and results. The Express API is the gatekeeper: it checks access, validates requests, asks the prediction services for results, and stores data. MongoDB keeps accounts and operational records. The two prediction services each have a separate job. The optional support assistant can use a local Ollama model; common help and ticket-status answers can also be returned without it.
-
+Solid arrows show normal data flow; dashed arrows mark the optional support-chat path. Model services return estimates and do not edit tickets. The Recommendation Engine is rules-based logic in the backend, not a third trained ML model.
 ### The three decision steps
 
 The Admin **Recommendation Engine** runs a sequence; it is not a third trained ML model:
