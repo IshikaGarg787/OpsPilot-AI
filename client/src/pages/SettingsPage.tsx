@@ -1,4 +1,4 @@
-import { Check, LogOut, Moon, Palette, Save, Sparkles, Sun, Terminal, UserRound } from 'lucide-react';
+import { Check, Leaf, LogOut, Moon, Palette, Save, Sun, Terminal, UserRound } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, ErrorState, Notice, PageIntro } from '../components/ui';
@@ -85,7 +85,7 @@ export function SettingsPage() {
               <div className="field-control is-readonly"><input value={user?.email ?? ''} readOnly /></div>
               <small className="field-help">Email changes are not enabled in this release.</small>
             </label>
-            <button className="button button-primary" type="submit" disabled={busy}><Save size={16} />{busy ? 'Saving…' : 'Save changes'}</button>
+            <button className="button button-primary" type="submit" disabled={busy}><Save size={16} />{busy ? 'Saving...' : 'Save changes'}</button>
           </form>
         </Card>
 
@@ -120,7 +120,7 @@ export function SettingsPage() {
               <Moon size={19} />
               <span>
                 <strong>Forest After Hours</strong>
-                <small>Deep evergreen surfaces with warm readable text</small>
+                <small>Charcoal surfaces with clear yellow accents and white text</small>
               </span>
               {selectedTheme === 'dark' && <Check size={17} />}
             </button>
@@ -156,10 +156,10 @@ export function SettingsPage() {
               className={`theme-option ${selectedTheme === 'aurora' ? 'selected' : ''}`}
               onClick={() => { setSelectedTheme('aurora'); setTheme('aurora'); }}
             >
-              <Sparkles size={19} />
+              <Leaf size={19} />
               <span>
                 <strong>Forest Canopy</strong>
-                <small>Deep green surfaces with soft botanical accents</small>
+                <small>Deep green surfaces with restrained botanical accents</small>
               </span>
               {selectedTheme === 'aurora' && <Check size={17} />}
             </button>
@@ -172,7 +172,7 @@ export function SettingsPage() {
               <Palette size={19} />
               <span>
                 <strong>System Default</strong>
-                <small>Follow your device operating system preference</small>
+                <small>Clean blue surfaces with bright blue accents</small>
               </span>
               {selectedTheme === 'system' && <Check size={17} />}
             </button>
@@ -183,7 +183,7 @@ export function SettingsPage() {
         <Card title="Account and services">
           <div className="account-list">
             <div><span>Account role</span><strong>{user?.role ?? 'user'}</strong></div>
-            <div><span>Application version</span><strong>0.1.0 · local release</strong></div>
+            <div><span>Application version</span><strong>0.1.0 - local release</strong></div>
             <div><span>Session security</span><strong>HTTP-only cookie</strong></div>
           </div>
           <button className="button button-danger" onClick={() => void signOut()}><LogOut size={16} /> Sign out</button>
