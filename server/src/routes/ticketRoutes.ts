@@ -7,12 +7,14 @@ import { TicketModel } from '../models/Ticket.js';
 import { TicketAttachmentModel } from '../models/TicketAttachment.js';
 import { PredictionModel } from '../models/Prediction.js';
 import { normalizedRole, UserModel } from '../models/User.js';
-import { predictDelayRisk, predictResolution } from '../services/mlService.js';
+import { forecastWorkload, predictDelayRisk, predictResolution } from '../services/mlService.js';
 import { customerTicketCreateSchema, customerTicketListQuerySchema, recommendationDecisionSchema, ticketAssignmentSchema, ticketCreateSchema, ticketResponseSchema, ticketStatusSchema } from '../validators/schemas.js';
 import { z } from 'zod';
 import { calculateTicketSlaForRecord } from '../services/slaPolicy.js';
 import { recordFirstResponse, recordResolution, startTicketSla } from '../services/slaManagementService.js';
-import { buildCustomerActivity, customerTicketFilter, CUSTOMER_ESTIMATE_PROJECT, CUSTOMER_TICKET_CATEGORY, CUSTOMER_TICKET_PRIORITY, CUSTOMER_TICKET_PROJECT, isCustomerTicketOwner, serializeCustomerTicket, summarizeCustomerTicketCounts } from '../services/customerTickets.js';
+import { buildCustomerActivity, customerTicketFilter, CUSTOMER_ESTIMATE_PROJECT, CUSTOMER_TICKET_CATEGORY, CUSTOMER_TICKET_PROJECT, isCustomerTicketOwner, serializeCustomerTicket, summarizeCustomerTicketCounts } from '../services/customerTickets.js';
+import { buildQueueWorkloadHistory } from '../services/queueWorkloadHistory.js';
+import { assignAutomaticPriority } from '../services/automaticPriority.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -27,6 +29,10 @@ const riskSchema = z.object({
   explanation: z.object({ summary: z.string(), historical_evidence: z.array(z.object({ factor: z.string(), value: z.string(), historical_tickets: z.number().int().nonnegative(), historical_delay_rate: z.number().min(0).max(1) })), evidence_cutoff: z.string(), interpretation: z.string() }).optional(),
 });
 const resolutionSchema = z.object({ duration: z.number().finite().nonnegative(), unit: z.literal('hours'), model_version: z.string().optional(), artifact_generated_at: z.string().optional() });
+const ticketWorkloadSchema = z.object({
+  model_id: z.string(), history_start: z.string(), history_end: z.string(), history_days: z.number().int().positive(), ticket_total: z.number().nonnegative(), horizon: z.union([z.literal(7), z.literal(14)]),
+  forecast: z.array(z.object({ date: z.string(), forecast: z.number().finite().nonnegative(), planning_low: z.number().finite().nonnegative(), planning_high: z.number().finite().nonnegative(), high_load_flag: z.boolean() })).min(7).max(14),
+});
 const allowedMimeTypes = new Set(['application/pdf', 'image/png', 'image/jpeg', 'text/plain', 'text/csv']);
 const maxAttachmentBytes = 3 * 1024 * 1024;
 const maxTicketAttachmentBytes = 8 * 1024 * 1024;
@@ -62,7 +68,7 @@ async function serialize(ticket: any, role: string, includeDetails = true) {
   return {
     id: ticket._id.toString(), ticketNumber: ticket.ticketNumber, ownerRole: ticket.ownerRole,
     owner: ticket.ownerUserId.toString(), subject: ticket.subject, description: ticket.description, inputLanguage: ticket.inputLanguage ?? 'auto',
-    category: ticket.category, priority: ticket.priority, project: ticket.project, status: ticket.status,
+    category: ticket.category, priority: ticket.priority, prioritySource: ticket.prioritySource ?? 'legacy', project: ticket.project, status: ticket.status,
     assignedTo: ticket.assignedTo && typeof ticket.assignedTo !== 'string' ? { id: ticket.assignedTo._id.toString(), name: ticket.assignedTo.name, email: ticket.assignedTo.email } : ticket.assignedTo,
     aiSignals: ticket.aiSignals, workloadOutlook: ticket.workloadOutlook, recommendation: ticket.recommendation,
     sla: calculateTicketSlaForRecord(ticket),
@@ -86,17 +92,48 @@ router.post('/', requireRole('customer', 'it_team'), asyncHandler(async (req, re
   const role = normalizedRole(req.user!);
   const customer = role === 'customer';
   const input = customer
-    ? { ...customerTicketCreateSchema.parse(req.body), priority: CUSTOMER_TICKET_PRIORITY, project: CUSTOMER_TICKET_PROJECT }
+    ? { ...customerTicketCreateSchema.parse(req.body), project: CUSTOMER_TICKET_PROJECT }
     : ticketCreateSchema.parse(req.body);
   const category = customer ? CUSTOMER_TICKET_CATEGORY : input.category;
-  const priority = input.priority;
+  // Existing risk and resolution models require a priority feature. Use a neutral
+  // internal baseline, then assign the ticket's actual priority from model results.
+  const modelPriority = 'Medium';
   const project = input.project;
   const createdAt = new Date();
-  const modelInput = { issue_created: createdAt.toISOString(), issue_priority: priority, issue_type: category, issue_proj: customer ? CUSTOMER_ESTIMATE_PROJECT : project };
+  const modelInput = { issue_created: createdAt.toISOString(), issue_priority: modelPriority, issue_type: category, issue_proj: customer ? CUSTOMER_ESTIMATE_PROJECT : project };
   const signals: Record<string, unknown> = { checkedAt: new Date() };
   const unavailable: string[] = [];
+  const workloadNotes: string[] = [];
+  let workloadHistoryDays = 0;
+  let workloadInput: Array<{ date: string; ticket_count: number }> = [];
   try {
-    const risk = riskSchema.parse(await predictDelayRisk({ ...modelInput, issue_reporter: 'new-intake' }));
+    const now = new Date();
+    const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const historyStart = new Date(todayUtc.getTime() - 119 * 86400000);
+    const [firstTicket, daily] = await Promise.all([
+      TicketModel.findOne().sort({ createdAt: 1 }).select('createdAt'),
+      TicketModel.aggregate([
+        { $match: { createdAt: { $gte: historyStart, $lt: new Date(todayUtc.getTime() + 86400000) } } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'UTC' } }, ticket_count: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+    ]);
+    const history = buildQueueWorkloadHistory(daily, firstTicket?.createdAt ?? null, now);
+    workloadHistoryDays = history.actualDays;
+    if (history.actualDays >= 60) workloadInput = history.records.map(({ date, ticket_count }) => ({ date, ticket_count }));
+    else workloadNotes.push('workload forecast skipped: fewer than 60 real ticket-history days');
+  } catch {
+    workloadNotes.push('workload history could not be loaded');
+  }
+
+  const [riskResult, resolutionResult, workloadResult] = await Promise.allSettled([
+    predictDelayRisk({ ...modelInput, issue_reporter: 'new-intake' }).then((result) => riskSchema.parse(result)),
+    predictResolution(modelInput).then((result) => resolutionSchema.parse(result)),
+    workloadInput.length ? forecastWorkload(workloadInput, 7, 45_000).then((result) => ticketWorkloadSchema.parse(result)) : Promise.resolve(null),
+  ]);
+
+  const risk = riskResult.status === 'fulfilled' ? riskResult.value : null;
+  if (risk) {
     signals.delayRiskProbability = risk.risk_probability;
     signals.delayRiskCategory = risk.risk_category;
     signals.flaggedForReview = risk.flagged_for_review;
@@ -109,23 +146,48 @@ router.post('/', requireRole('customer', 'it_team'), asyncHandler(async (req, re
       evidenceCutoff: risk.explanation.evidence_cutoff,
       interpretation: risk.explanation.interpretation,
     };
-  } catch {
-    unavailable.push('delay risk');
-  }
-  try {
-    const estimate = resolutionSchema.parse(await predictResolution(modelInput));
+  } else unavailable.push('delay risk');
+
+  const estimate = resolutionResult.status === 'fulfilled' ? resolutionResult.value : null;
+  if (estimate) {
     signals.resolutionHours = estimate.duration;
     signals.resolutionModelVersion = estimate.model_version;
-  } catch {
-    unavailable.push('resolution time');
-  }
-  if (unavailable.length) signals.unavailableReason = `${unavailable.join(' and ')} signal unavailable`;
+  } else unavailable.push('resolution time');
+
+  const workload = workloadResult.status === 'fulfilled' ? workloadResult.value : null;
+  if (workload) {
+    const highLoadDays = workload.forecast.filter((day) => day.high_load_flag).length;
+    signals.workloadModelVersion = workload.model_id;
+    signals.workloadHighLoadDays = highLoadDays;
+    signals.workloadHorizon = workload.horizon;
+    signals.workloadActualHistoryDays = workloadHistoryDays;
+  } else if (workloadInput.length) unavailable.push('workload forecast');
+
+  const automaticPriority = assignAutomaticPriority({
+    ...(risk ? { riskProbability: risk.risk_probability, riskThreshold: risk.decision_threshold, riskCategory: risk.risk_category } : {}),
+    ...(estimate ? { resolutionHours: estimate.duration } : {}),
+    ...(workloadInput.length ? {} : { workloadHistoryDays }),
+    ...(workload ? { workload: { highLoadDays: workload.forecast.filter((day) => day.high_load_flag).length, horizon: workload.horizon, actualHistoryDays: workloadHistoryDays } } : {}),
+  });
+  const priority = automaticPriority.priority;
+  signals.recommendedPriority = priority;
+  signals.autoPriorityScore = automaticPriority.score;
+  signals.autoPriorityRationale = automaticPriority.rationale;
+  if (unavailable.length || workloadNotes.length) signals.unavailableReason = [...unavailable, ...workloadNotes].join('; ').slice(0, 200);
   const review = signals.flaggedForReview === true;
   const ticketNumber = `OP-${Date.now().toString().slice(-8)}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
   const ticket = new TicketModel({
     ticketNumber, ownerUserId: req.user!._id, ownerRole: role,
-    subject: input.subject, description: input.description, inputLanguage: input.inputLanguage, category, priority, project,
+    subject: input.subject, description: input.description, inputLanguage: input.inputLanguage, category, priority, prioritySource: 'auto', project,
     status: 'open', aiSignals: signals,
+    ...(workload ? { workloadOutlook: {
+      historyStart: workload.history_start, historyEnd: workload.history_end, historyDays: workload.history_days,
+      actualHistoryDays: workloadHistoryDays,
+      horizon: workload.horizon, expectedTickets: workload.forecast.reduce((sum, day) => sum + day.forecast, 0),
+      highLoadDays: workload.forecast.filter((day) => day.high_load_flag).length, modelVersion: workload.model_id,
+      forecast: workload.forecast.map((day) => ({ date: day.date, forecast: day.forecast, planningLow: day.planning_low, planningHigh: day.planning_high, highLoad: day.high_load_flag })),
+      generatedAt: new Date(),
+    } } : {}),
     ...(typeof signals.flaggedForReview === 'boolean' ? { recommendation: {
       action: review ? 'priority_review' : 'standard_queue', state: 'pending',
       rationale: review
@@ -134,15 +196,31 @@ router.post('/', requireRole('customer', 'it_team'), asyncHandler(async (req, re
     } } : {}),
   });
   addAudit(ticket, req, 'ticket_created', `${role} submitted a ticket`);
+  addAudit(ticket, req, 'priority_auto_assigned', `${priority}: ${automaticPriority.rationale}`);
   await ticket.save();
-  const predictionInput = { issueCreated: createdAt, priority, issueType: category, project, complaint: input.description, ticketId: ticket._id };
+  const predictionInput = { issueCreated: createdAt, priority: modelPriority, issueType: category, project, complaint: input.description, ticketId: ticket._id };
   const historyRuns = [
     PredictionModel.create({ userId: req.user!._id, modelId: 'operational-risk', modelVersion: signals.riskModelVersion, predictionType: 'delay_risk_classification', input: predictionInput, output: typeof signals.delayRiskProbability === 'number' ? { delayRisk: { probability: signals.delayRiskProbability, category: signals.delayRiskCategory, flaggedForReview: signals.flaggedForReview, decisionThreshold: signals.reviewThreshold, targetThresholdHours: signals.targetThresholdHours, modelVersion: signals.riskModelVersion, ...(signals.riskExplanation ? { explanation: signals.riskExplanation } : {}) } } : undefined, status: typeof signals.delayRiskProbability === 'number' ? 'success' : 'failed', ...(typeof signals.delayRiskProbability === 'number' ? {} : { errorCode: 'MODEL_UNAVAILABLE' }) }),
     PredictionModel.create({ userId: req.user!._id, modelId: 'resolution-time', modelVersion: signals.resolutionModelVersion, predictionType: 'point_estimate', input: predictionInput, output: typeof signals.resolutionHours === 'number' ? { duration: signals.resolutionHours, unit: 'hours' } : undefined, status: typeof signals.resolutionHours === 'number' ? 'success' : 'failed', ...(typeof signals.resolutionHours === 'number' ? {} : { errorCode: 'MODEL_UNAVAILABLE' }) }),
+    ...(workload ? [PredictionModel.create({
+      userId: req.user!._id, modelId: 'workload-forecasting', modelVersion: workload.model_id, predictionType: 'workload_forecast',
+      input: { ...predictionInput, issueType: 'Automatic ticket priority' },
+      output: { workload: {
+        historyStart: workload.history_start, historyEnd: workload.history_end, historyDays: workload.history_days,
+        horizon: workload.horizon, ticketTotal: workload.ticket_total,
+        expectedTickets: workload.forecast.reduce((sum, day) => sum + day.forecast, 0),
+        highLoadDays: signals.workloadHighLoadDays, modelVersion: workload.model_id, source: 'queue_history',
+        forecast: workload.forecast.map((day) => ({ date: day.date, forecast: day.forecast, planningLow: day.planning_low, planningHigh: day.planning_high, highLoad: day.high_load_flag })),
+      } },
+      status: 'success',
+    })] : []),
   ];
   await Promise.allSettled(historyRuns);
   await startTicketSla(ticket);
-  res.status(201).json({ success: true, data: { ticket: await serialize(ticket, role) }, message: unavailable.length ? 'Ticket submitted; one or more model signals are currently unavailable.' : 'Ticket submitted and scored by the available models.' });
+  const scoringSummary = workload
+    ? 'delay-risk, resolution-time, and workload models'
+    : `available ticket models${workloadNotes.length ? '; workload forecast skipped because reliable history was unavailable' : ''}`;
+  res.status(201).json({ success: true, data: { ticket: await serialize(ticket, role) }, message: `Ticket submitted with automatic ${priority} priority from ${scoringSummary}.` });
 }));
 
 router.get('/customer/dashboard', requireRole('customer'), asyncHandler(async (req, res) => {
@@ -252,6 +330,7 @@ router.patch('/:ticketId/priority', requireRole('admin'), asyncHandler(async (re
   const input = z.object({ priority: z.string().trim().min(1).max(100), note: z.string().trim().min(2).max(500) }).parse(req.body);
   const previous = ticket.priority;
   ticket.priority = input.priority;
+  ticket.prioritySource = 'admin_override';
   addAudit(ticket, req, 'priority_changed', `${previous} → ${input.priority}: ${input.note}`);
   await ticket.save();
   await startTicketSla(ticket, new Date());

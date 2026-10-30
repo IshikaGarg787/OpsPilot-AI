@@ -7,7 +7,6 @@ const CUSTOMER_VISIBLE_STATUSES = new Set<CustomerTicketStatus>([
 ]);
 
 export const CUSTOMER_TICKET_CATEGORY = 'Assistance';
-export const CUSTOMER_TICKET_PRIORITY = 'unknown';
 export const CUSTOMER_TICKET_PROJECT = 'Not specified';
 // The current resolution artifact requires an issue_proj value and has no unknown bucket.
 // This is its most common historical project category; it is used for scoring only.
@@ -133,6 +132,7 @@ export function serializeCustomerTicket(ticket: any, attachments: Array<Record<s
     inputLanguage: String(ticket.inputLanguage ?? 'auto'),
     category: String(ticket.category),
     priority: String(ticket.priority),
+    prioritySource: String(ticket.prioritySource ?? 'legacy'),
     project: CUSTOMER_TICKET_PROJECT,
     status: ticket.status as CustomerTicketStatus,
     assignedTo,

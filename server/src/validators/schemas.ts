@@ -53,7 +53,6 @@ export const ticketCreateSchema = z.object({
   description: z.string().trim().min(8).max(5000),
   inputLanguage: ticketLanguageSchema,
   category: z.string().trim().min(1).max(100),
-  priority: z.string().trim().min(1).max(100),
   project: z.string().trim().min(1).max(200),
 });
 export const customerTicketCreateSchema = z.object({

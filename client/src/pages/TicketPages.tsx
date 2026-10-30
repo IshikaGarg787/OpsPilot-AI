@@ -157,7 +157,6 @@ export function TicketCreatePage() {
   const [description, setDescription] = useState('');
   const [inputLanguage, setInputLanguage] = useState<NonNullable<Ticket['inputLanguage']>>('auto');
   const [category, setCategory] = useState(customer ? 'Assistance' : '');
-  const [priority, setPriority] = useState(customer ? 'unknown' : '');
   const [project, setProject] = useState(customer ? 'Not specified' : '');
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
@@ -168,9 +167,8 @@ export function TicketCreatePage() {
     api.models.metadata().then((next) => {
       setMetadata(next);
       setCategory(next.fields.issue_type?.options[0] ?? '');
-      setPriority(next.fields.issue_priority?.options[0] ?? '');
       setProject(next.fields.issue_proj?.options[0] ?? '');
-    }).catch(() => setMetadataHint('Model fields are unavailable; enter the ticket category, priority, and project manually. The ticket can still be submitted.'));
+    }).catch(() => setMetadataHint('Model fields are unavailable; enter the ticket category and project manually. Priority is assigned automatically.'));
   }, [customer]);
 
   async function submit(event: FormEvent) {
@@ -181,7 +179,7 @@ export function TicketCreatePage() {
     try {
       const { ticket } = customer
         ? await api.tickets.createCustomer({ subject, description, inputLanguage, category: 'Assistance' })
-        : await api.tickets.create({ subject, description, inputLanguage, category, priority, project });
+        : await api.tickets.create({ subject, description, inputLanguage, category, project });
       createdTicketId = ticket.id;
       for (const file of files) await api.tickets.uploadAttachment(ticket.id, file);
       navigate(customer ? '/app/tickets' : `/app/tickets/${ticket.id}`, { replace: true, state: customer ? { ticketCreated: true } : undefined });
@@ -228,28 +226,21 @@ export function TicketCreatePage() {
                 </select>
               ) : <input value={category} onChange={(e) => setCategory(e.target.value)} required placeholder="e.g. access issue" />}
             </label>
-            {!customer && (
-              <label className="field">
-                <span>Priority <i>*</i></span>
-                {options(metadata?.fields.issue_priority) ? (
-                  <select value={priority} onChange={(e) => setPriority(e.target.value)} required>
-                    {metadata!.fields.issue_priority.options.map((item) => <option key={item}>{item}</option>)}
-                  </select>
-                ) : <input value={priority} onChange={(e) => setPriority(e.target.value)} required placeholder="e.g. High" />}
-              </label>
-            )}
           </div>
           {customer ? (
-            <Notice variant="info">Priority is assigned by support after review. &ldquo;Project / service&rdquo; was an internal model code, so it is omitted from this form; the resolution estimate uses historical ticket data.</Notice>
+            <Notice variant="info">Priority will be assigned automatically from the available model signals. &ldquo;Project / service&rdquo; is an internal model field, so it is omitted here.</Notice>
           ) : (
-            <label className="field">
-              <span>Project / service <i>*</i></span>
-              {options(metadata?.fields.issue_proj) ? (
-                <select value={project} onChange={(e) => setProject(e.target.value)} required>
-                  {metadata!.fields.issue_proj.options.map((item) => <option key={item}>{item}</option>)}
-                </select>
-              ) : <input value={project} onChange={(e) => setProject(e.target.value)} required placeholder="Project or service name" />}
-            </label>
+            <>
+              <label className="field">
+                <span>Project / service <i>*</i></span>
+                {options(metadata?.fields.issue_proj) ? (
+                  <select value={project} onChange={(e) => setProject(e.target.value)} required>
+                    {metadata!.fields.issue_proj.options.map((item) => <option key={item}>{item}</option>)}
+                  </select>
+                ) : <input value={project} onChange={(e) => setProject(e.target.value)} required placeholder="Project or service name" />}
+              </label>
+              <Notice variant="info">Priority is evaluated automatically from delay risk, estimated resolution time, and available workload history.</Notice>
+            </>
           )}
         </Card>
         <Card title="Attachments and submission">
@@ -276,8 +267,8 @@ export function TicketCreatePage() {
           )}
           <Notice variant="warning"><strong>Privacy reminder.</strong> Do not attach passwords, access tokens, or payment details.</Notice>
           {error && <div className="form-error" role="alert"><AlertTriangle size={16} />{error}</div>}
-          <button className="button button-primary button-full ticket-submit" type="submit" disabled={busy || !subject || !description || (!customer && (!category || !priority || !project))}>
-            {busy ? <><span className="button-spinner" /> {customer ? 'Submitting ticket…' : 'Submitting and checking available AI signals…'}</> : <><TicketIcon size={16} /> Submit ticket</>}
+          <button className="button button-primary button-full ticket-submit" type="submit" disabled={busy || !subject || !description || (!customer && (!category || !project))}>
+            {busy ? <><span className="button-spinner" /> Scoring available models and assigning priority…</> : <><TicketIcon size={16} /> Submit ticket</>}
           </button>
           {!customer && <small className="field-help">Available models score the creation-time fields. Complaint text stays as context for the support team.</small>}
         </Card>
@@ -413,7 +404,7 @@ export function TicketDetailPage() {
                 <strong>{ticket.workloadOutlook.horizon} days · {ticket.workloadOutlook.expectedTickets?.toFixed(0)} tickets</strong>
                 <small>{ticket.workloadOutlook.highLoadDays} high-load days · based on {ticket.workloadOutlook.historyDays} days of history</small>
               </div>
-              <small className="field-help">{ticket.workloadOutlook.historyStart} to {ticket.workloadOutlook.historyEnd} · refreshed {ticket.workloadOutlook.generatedAt ? new Date(ticket.workloadOutlook.generatedAt).toLocaleString() : 'recently'}</small>
+              <small className="field-help">{ticket.workloadOutlook.historyStart} to {ticket.workloadOutlook.historyEnd} · {ticket.workloadOutlook.actualHistoryDays ?? ticket.workloadOutlook.historyDays} real history days · refreshed {ticket.workloadOutlook.generatedAt ? new Date(ticket.workloadOutlook.generatedAt).toLocaleString() : 'recently'}</small>
               {admin && (
                 <Link className="button button-ghost button-full button-top-gap" to="/app/capacity-plans" state={{ ticket }}>
                   Compare capacity scenarios <ArrowRight size={15} />
@@ -656,7 +647,7 @@ export function TicketDetailPage() {
                   </select>
                 </label>
                 <label className="field">
-                  <span>Priority</span>
+                  <span>Priority{ticket.prioritySource === 'auto' ? ' · assigned automatically' : ticket.prioritySource === 'admin_override' ? ' · manually overridden' : ''}</span>
                   <select value={priority} onChange={(e) => setPriority(e.target.value)}>
                     <option>{priority}</option>
                     <option>Highest</option>
@@ -671,15 +662,15 @@ export function TicketDetailPage() {
                   disabled={busy || priority === ticket.priority}
                   onClick={() => void run(() => api.tickets.updatePriority(ticket.id, priority, 'Admin queue review'))}
                 >
-                  Save priority
+                  Apply manual override
                 </button>
-                {ticket.aiSignals?.recommendedPriority && (
-                  <small className="field-help">Suggested priority: {ticket.aiSignals.recommendedPriority} · based on the delay review threshold; confirm against current customer impact.</small>
+                {ticket.prioritySource === 'auto' && ticket.aiSignals?.autoPriorityRationale && (
+                  <small className="field-help">Automatically assigned: {ticket.priority}. {ticket.aiSignals.autoPriorityRationale} Use the selector only when an override is needed.</small>
                 )}
                 <div className="recommendation-review">
                   <span className="eyebrow">Decision support recommendation</span>
                   <strong>{ticket.recommendation?.action === 'priority_review' ? 'Review early' : ticket.recommendation?.action === 'standard_queue' ? 'Standard queue' : 'No recommendation'}</strong>
-                  <small>This combines the delay-risk model, SLA clocks, resolution estimate, and current team workload. It never assigns or reprioritizes a ticket automatically.</small>
+                  <small>The ticket priority is assigned automatically at creation. This separate assignment/action recommendation still needs admin review.</small>
                   <small>{ticket.recommendation?.rationale ?? 'A risk model score is required before a recommendation can be reviewed.'}</small>
                   {ticket.recommendation?.state === 'pending' ? (
                     <>
