@@ -123,6 +123,7 @@ export interface Ticket {
   id: string; ticketNumber: string; ownerRole: 'customer' | 'it_team'; owner?: string;
   subject: string; description: string; inputLanguage?: TicketInputLanguage; category: string; priority: string; prioritySource?: 'auto' | 'admin_override' | 'legacy'; project: string;
   status: TicketStatus; assignedTo?: { id: string; name: string; email?: string } | null;
+  estimatedResolutionHours?: number | null;
   estimatedResolutionAt?: string | null; delayExplanation?: string;
   sla?: TicketSla | null;
   workloadOutlook?: { historyStart?: string; historyEnd?: string; historyDays?: number; actualHistoryDays?: number; horizon?: 7 | 14; expectedTickets?: number; highLoadDays?: number; modelVersion?: string; generatedAt?: string; forecast?: Array<{ date: string; forecast: number; planningLow?: number; planningHigh?: number; highLoad?: boolean }> };
@@ -138,7 +139,7 @@ export interface Ticket {
 
 export interface CustomerTicketEvent {
   id: string;
-  kind: 'created' | 'assigned' | 'status' | 'resolved' | 'closed' | 'reply';
+  kind: 'created' | 'viewed' | 'assigned' | 'status' | 'in_progress' | 'resolved' | 'closed' | 'reply';
   label: string;
   status?: TicketStatus;
   createdAt: string;

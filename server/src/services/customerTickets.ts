@@ -25,7 +25,7 @@ export type CustomerTicketCounts = {
 
 export type CustomerTicketEvent = {
   id: string;
-  kind: 'created' | 'assigned' | 'status' | 'resolved' | 'closed' | 'reply';
+  kind: 'created' | 'viewed' | 'assigned' | 'status' | 'in_progress' | 'resolved' | 'closed' | 'reply';
   label: string;
   status?: CustomerTicketStatus;
   createdAt: string;
@@ -76,6 +76,10 @@ export function customerTicketTimeline(ticket: any): CustomerTicketEvent[] {
       events.push({ id, kind: 'assigned', label: 'Ticket assigned to an IT member', createdAt });
       return;
     }
+    if (entry.action === 'ticket_viewed') {
+      events.push({ id, kind: 'viewed', label: 'Support viewed your ticket', createdAt });
+      return;
+    }
     if (entry.action === 'response_added' && entry.details === 'Public response added') {
       events.push({ id, kind: 'reply', label: 'Support sent a customer-visible update', createdAt });
       return;
@@ -84,8 +88,17 @@ export function customerTicketTimeline(ticket: any): CustomerTicketEvent[] {
 
     const nextStatus = String(entry.details ?? '').match(/→\s*(open|triaged|assigned|in_progress|waiting_customer|resolved|closed)\s*$/i)?.[1]?.toLowerCase() as CustomerTicketStatus | undefined;
     if (!nextStatus || !CUSTOMER_VISIBLE_STATUSES.has(nextStatus)) return;
-    const kind = nextStatus === 'resolved' ? 'resolved' : nextStatus === 'closed' ? 'closed' : 'status';
-    const label = kind === 'resolved' ? 'Ticket resolved' : kind === 'closed' ? 'Ticket closed' : `Status updated to ${nextStatus.replaceAll('_', ' ')}`;
+    const kind = nextStatus === 'resolved' ? 'resolved' : nextStatus === 'closed' ? 'closed' : nextStatus === 'in_progress' ? 'in_progress' : 'status';
+    const labels: Record<CustomerTicketStatus, string> = {
+      open: 'Ticket is awaiting support review',
+      triaged: 'Support reviewed your ticket',
+      assigned: 'Ticket assigned to an IT member',
+      in_progress: 'Work is in progress on your ticket',
+      waiting_customer: 'Support needs more information from you',
+      resolved: 'Ticket resolved',
+      closed: 'Ticket closed',
+    };
+    const label = labels[nextStatus];
     events.push({ id, kind, label, status: nextStatus, createdAt });
   });
 
@@ -135,6 +148,7 @@ export function serializeCustomerTicket(ticket: any, attachments: Array<Record<s
     prioritySource: String(ticket.prioritySource ?? 'legacy'),
     project: CUSTOMER_TICKET_PROJECT,
     status: ticket.status as CustomerTicketStatus,
+    estimatedResolutionHours: typeof ticket.aiSignals?.resolutionHours === 'number' ? ticket.aiSignals.resolutionHours : null,
     assignedTo,
     responses: publicResponses,
     resolutionSummary: [...publicResponses].reverse().find((response) => response.resolutionNote)?.resolutionNote ?? null,

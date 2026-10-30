@@ -269,6 +269,10 @@ router.get('/', asyncHandler(async (req, res) => {
 router.get('/:ticketId', asyncHandler(async (req, res) => {
   const role = normalizedRole(req.user!);
   const ticket = await getAccessibleTicket(String(req.params.ticketId), req.user!);
+  if ((role === 'admin' || role === 'it_team') && !ticket.audit.some((entry: any) => entry.action === 'ticket_viewed')) {
+    addAudit(ticket, req, 'ticket_viewed', 'Support opened the ticket');
+    await ticket.save();
+  }
   res.json({ success: true, data: { ticket: await serialize(ticket, role) } });
 }));
 

@@ -8,7 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import type { ModelMetadata, Ticket, TicketStatus } from '../types';
 
 const statusText = (status: TicketStatus) => status.replaceAll('_', ' ');
-const hoursText = (hours?: number) => hours == null ? 'Unavailable' : `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(hours)} hours`;
+const hoursText = (hours?: number | null) => hours == null ? 'Unavailable' : hours > 24 ? `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(hours / 24)} days` : `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(hours)} hours`;
 const statusClass = (status: TicketStatus) => `ticket-status ticket-status-${status}`;
 
 export function TicketListPage() {
@@ -185,7 +185,7 @@ export function TicketCreatePage() {
         : await api.tickets.create({ subject, description, inputLanguage, category, project });
       createdTicketId = ticket.id;
       for (const file of files) await api.tickets.uploadAttachment(ticket.id, file);
-      navigate(customer ? '/app/tickets' : `/app/tickets/${ticket.id}`, { replace: true, state: customer ? { ticketCreated: true } : undefined });
+      navigate(`/app/tickets/${ticket.id}`, { replace: true, state: customer ? { ticketCreated: true } : undefined });
     } catch (err) {
       if (createdTicketId) navigate(`/app/tickets/${createdTicketId}`, { replace: true, state: { attachmentUploadFailed: true } });
       setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'The ticket could not be submitted.');
@@ -373,6 +373,16 @@ export function TicketDetailPage() {
         description={`${ticket.category}${customer ? '' : ` · ${ticket.project}`} · Created ${new Date(ticket.createdAt).toLocaleString()}`}
         action={<span className={statusClass(ticket.status)}>{statusText(ticket.status)}</span>}
       />
+
+      {customer && (location.state as { ticketCreated?: boolean } | null)?.ticketCreated && (
+        <Notice variant="success">Ticket submitted successfully. Your support team will keep you updated.</Notice>
+      )}
+      {customer && (
+        <Card title="Estimated resolution time">
+          <div className="ticket-ai-signal"><span><Clock3 size={15} /> Estimated time to solve this ticket</span><strong>{hoursText(ticket.estimatedResolutionHours)}</strong></div>
+          <small className="field-help">Based on available historical resolution data.</small>
+        </Card>
+      )}
 
       {(location.state as { attachmentUploadFailed?: boolean } | null)?.attachmentUploadFailed && (
         <Notice variant="warning">Ticket created successfully, but an attachment could not be uploaded. You can retry by raising a new ticket with the file.</Notice>
