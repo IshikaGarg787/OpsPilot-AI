@@ -1,4 +1,4 @@
-import { Check, Leaf, Moon, Palette, Sparkles, Sun } from 'lucide-react';
+import { Check, Leaf, Moon, Palette, Sun } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -18,15 +18,15 @@ const themeOptions: ThemeOption[] = [
   {
     id: 'dark',
     name: 'Forest After Hours',
-    category: 'Recommended · deep evergreen surfaces',
+    category: 'Charcoal surfaces with clear yellow accents and white text',
     icon: Moon,
-    color: '#14231b',
-    accent: '#8bb49a',
+    color: '#171717',
+    accent: '#ffd400',
   },
   {
     id: 'light',
     name: 'Warm Operations',
-    category: 'Ivory surfaces with forest and clay accents',
+    category: 'Default: ivory surfaces with forest and clay accents',
     icon: Sun,
     color: '#faf7f0',
     accent: '#315f48',
@@ -42,18 +42,18 @@ const themeOptions: ThemeOption[] = [
   {
     id: 'aurora',
     name: 'Forest Canopy',
-    category: 'Deep green with soft botanical accents',
-    icon: Sparkles,
-    color: '#13251d',
-    accent: '#80b394',
+    category: 'Deep green surfaces with restrained botanical accents',
+    icon: Leaf,
+    color: '#102019',
+    accent: '#83b88f',
   },
   {
     id: 'system',
     name: 'System Default',
-    category: 'Auto match device preference',
+    category: 'Clean blue surfaces with bright blue accents',
     icon: Palette,
-    color: '#faf7f0',
-    accent: '#b96548',
+    color: '#15263a',
+    accent: '#65aaff',
   },
 ];
 
