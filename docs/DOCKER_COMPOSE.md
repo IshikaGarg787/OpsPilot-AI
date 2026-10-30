@@ -22,6 +22,8 @@ docker compose ps
 
 The first build downloads Node.js/Python dependencies and can take several minutes. When the API reports healthy, visit `http://localhost:8080`. To verify the services, open `http://localhost:8080/api/v1/health/ready`; it should report MongoDB and all model services available.
 
+By default, Compose uses its own MongoDB container and persistent `opspilot_mongo_data` volume. This keeps data across restarts on this PC, but does not include accounts or tickets from another environment and does not sync with other devices. To share an existing database, set `MONGODB_URI` in `.env` to the same private MongoDB connection string used by that environment. Keep this value private and use the same URI in each device's local `.env`.
+
 ## Useful commands
 
 ```powershell
