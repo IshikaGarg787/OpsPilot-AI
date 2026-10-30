@@ -1,6 +1,6 @@
 # Model 3 — Workload Forecasting: Technical Report
 
-**Project:** OpsPilot AI  |  **Module:** `ml/forecasting/`  |  **Status:** optional model, implemented and evaluated
+**Project:** Pragya  |  **Module:** `ml/forecasting/`  |  **Status:** optional model, implemented and evaluated
 **Companion notebook:** `model3_workload_forecasting.ipynb` (repo root)
 
 > All figures below come from a reproducible run of `python -m ml.forecasting.run_models` (training/test cut-off, folds and

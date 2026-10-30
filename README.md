@@ -1,12 +1,12 @@
-# OpsPilot AI — Turn ticket history into clearer support decisions
+# Pragya — Turn ticket history into clearer support decisions
 
 <p align="center">
-  <img src="client/public/assets/opspilot-mark.png" alt="OpsPilot AI logo" width="150" />
+  <img src="client/public/assets/pragya-mark.png" alt="Pragya logo" width="150" />
 </p>
 
 <h3 align="center">One workspace for tickets, delay risk, resolution estimates, and workload planning.</h3>
 
-OpsPilot AI is a help-desk operations app. Customers and IT staff use it to manage support tickets. Admins use it to review the queue, understand possible delays, estimate resolution time, and plan incoming workload. The app gives people evidence to make decisions; it does not silently assign staff or change a ticket’s priority for them.
+Pragya is a help-desk operations app. Customers and IT staff use it to manage support tickets. Admins use it to review the queue, understand possible delays, estimate resolution time, and plan incoming workload. The app gives people evidence to make decisions; it does not silently assign staff or change a ticket’s priority for them.
 
 > **New here?** Start with [What the app does](#what-the-app-does), then try the [live app](#try-the-live-app) or follow the [local setup](#run-it-on-your-computer).
 
@@ -22,7 +22,7 @@ These are the deployment addresses supplied for this project:
 | Model 1: delay risk | [opspilot-aigarg-delayrisk.onrender.com](https://opspilot-aigarg-delayrisk.onrender.com/) | Estimates the chance that a ticket will take a long time to resolve. |
 | Model 2: resolution and workload | [opspilot-aigarg-resolution.onrender.com](https://opspilot-aigarg-resolution.onrender.com/) | Estimates resolution time and creates workload forecasts. |
 
-The model addresses are service endpoints, not separate user-facing apps. Use OpsPilot through the web app. A free hosting service may take a little while to wake up after being idle. The readiness link is the useful check for the backend; a sleeping or unreachable model can make prediction features temporarily unavailable.
+The model addresses are service endpoints, not separate user-facing apps. Use Pragya through the web app. A free hosting service may take a little while to wake up after being idle. The readiness link is the useful check for the backend; a sleeping or unreachable model can make prediction features temporarily unavailable.
 
 ### Who can use it?
 
@@ -35,7 +35,7 @@ Public sign-up does not create an Admin account. Admin access is provisioned by 
 ## What the app does
 
 1. A Customer or IT Team member creates a ticket.
-2. OpsPilot saves the ticket and its activity. Where model services are available, it also requests delay-risk and resolution-time estimates.
+2. Pragya saves the ticket and its activity. Where model services are available, it also requests delay-risk and resolution-time estimates.
 3. An Admin reviews the ticket and its evidence in the queue or Recommendation Engine.
 4. The Admin decides whether to accept, change, or dismiss a suggestion. Any assignment or priority change is a separate, human-confirmed action.
 5. Workload Forecasting uses ticket counts over time to estimate how many new tickets may arrive. It helps with planning; it does not decide staffing levels.
@@ -45,7 +45,7 @@ Public sign-up does not create an Admin account. Admin access is provisioned by 
 Follow the numbered path: people use the role-based website; the API checks access and handles the request; MongoDB stores operational records; the two model services return separate predictions; then the Admin reviews an explained suggestion and confirms any action. Workload history and the optional support assistant are shown as separate paths so their roles are clear.
 
 <p align="center">
-  <img src="docs/assets/architecture-overview.svg" alt="OpsPilot architecture: Customer, IT Team, and Admin use the Vercel web app, which sends requests to the Express API. The API stores data in MongoDB and calls the delay-risk and resolution/workload model services. An Admin reviews explainable recommendations and confirms actions. CSV history feeds workload forecasts." width="100%" />
+  <img src="docs/assets/architecture-overview.svg" alt="Pragya architecture: Customer, IT Team, and Admin use the Vercel web app, which sends requests to the Express API. The API stores data in MongoDB and calls the delay-risk and resolution/workload model services. An Admin reviews explainable recommendations and confirms actions. CSV history feeds workload forecasts." width="100%" />
 </p>
 
 Solid arrows show normal data flow; dashed arrows mark the optional support-chat path. Model services return estimates and do not edit tickets. The Recommendation Engine is rules-based logic in the backend, not a third trained ML model.
@@ -119,7 +119,7 @@ If PowerShell blocks activating the first Python environment, you can still run 
 npm run db:up
 ```
 
-This starts MongoDB only. It does not run the OpsPilot website or models. To stop the database later without deleting its saved volume, run `npm run db:down`.
+This starts MongoDB only. It does not run the Pragya website or models. To stop the database later without deleting its saved volume, run `npm run db:down`.
 
 **Option B — use MongoDB you already have:**
 

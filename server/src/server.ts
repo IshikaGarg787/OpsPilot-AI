@@ -4,7 +4,7 @@ import { env } from './config/env.js';
 import { evaluateSlaRecords } from './services/slaManagementService.js';
 
 app.listen(env.port, '0.0.0.0', () => {
-  console.log(`OpsPilot API listening on http://localhost:${env.port}`);
+  console.log(`Pragya API listening on http://localhost:${env.port}`);
 });
 
 // Bind the API before database setup so liveness checks and requests can receive

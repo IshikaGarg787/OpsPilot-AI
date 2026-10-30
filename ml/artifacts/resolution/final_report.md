@@ -1,4 +1,4 @@
-# OpsPilot AI Resolution-Time Prediction Report
+# Pragya Resolution-Time Prediction Report
 
 Generated from `C:\Users\Acer\Desktop\Projects\OpsPilot-AI\Help Desk Tickets` on 2026-10-26 (UTC).
 

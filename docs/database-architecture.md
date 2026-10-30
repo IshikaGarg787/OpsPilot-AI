@@ -1,4 +1,4 @@
-# OpsPilot AI — database and authorization
+# Pragya — database and authorization
 
 ## Implemented collections
 
@@ -25,7 +25,7 @@ Public signup can create Customer or IT Team accounts only. The single Admin own
 
 ## Ticket and model data
 
-Ticket description is retained as complaint context. The trained delay-risk and resolution models consume structured creation-time fields, not free-text complaint. Risk and resolution signals are stored on ticket intake and their model runs appear in prediction history. Admin integrated triage runs delay risk → resolution estimate → workload forecast, saves one decision packet, and updates the linked ticket. Workload history uses actual daily customer-ticket counts from OpsPilot when at least 120 days are available; otherwise, Admins can import daily totals or ticket creation timestamps from company records.
+Ticket description is retained as complaint context. The trained delay-risk and resolution models consume structured creation-time fields, not free-text complaint. Risk and resolution signals are stored on ticket intake and their model runs appear in prediction history. Admin integrated triage runs delay risk → resolution estimate → workload forecast, saves one decision packet, and updates the linked ticket. Workload history uses actual daily customer-ticket counts from Pragya when at least 120 days are available; otherwise, Admins can import daily totals or ticket creation timestamps from company records.
 
 Capacity scenario inputs are explicitly supplied by an Admin. The API compares each forecast day's expected tickets to the stated baseline and proposed ticket-per-day capacities, stores uncovered volume and coverage change, and adds a ticket audit event. It does not infer staffing, labor hours, or causal savings.
 

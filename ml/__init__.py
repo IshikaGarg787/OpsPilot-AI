@@ -1,1 +1,1 @@
-"""OpsPilot AI model services."""
+"""Pragya model services."""
