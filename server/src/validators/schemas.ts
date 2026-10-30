@@ -47,9 +47,11 @@ export const workloadForecastSchema = z.object({
 
 export const profileSchema = z.object({ name: z.string().trim().min(2).max(100) });
 export const preferenceSchema = z.object({ themePreference: z.enum(['light', 'dark', 'system']) });
+export const ticketLanguageSchema = z.enum(['auto', 'hindi', 'english', 'hinglish']).default('auto');
 export const ticketCreateSchema = z.object({
   subject: z.string().trim().min(4).max(200),
   description: z.string().trim().min(8).max(5000),
+  inputLanguage: ticketLanguageSchema,
   category: z.string().trim().min(1).max(100),
   priority: z.string().trim().min(1).max(100),
   project: z.string().trim().min(1).max(200),
@@ -57,6 +59,7 @@ export const ticketCreateSchema = z.object({
 export const customerTicketCreateSchema = z.object({
   subject: z.string().trim().min(4).max(200),
   description: z.string().trim().min(8).max(5000),
+  inputLanguage: ticketLanguageSchema,
   category: z.literal('Assistance'),
 }).strict();
 export const customerTicketListQuerySchema = z.object({

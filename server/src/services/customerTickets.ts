@@ -130,6 +130,7 @@ export function serializeCustomerTicket(ticket: any, attachments: Array<Record<s
     ownerRole: ticket.ownerRole,
     subject: String(ticket.subject),
     description: String(ticket.description),
+    inputLanguage: String(ticket.inputLanguage ?? 'auto'),
     category: String(ticket.category),
     priority: String(ticket.priority),
     project: CUSTOMER_TICKET_PROJECT,
