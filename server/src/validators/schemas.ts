@@ -79,7 +79,7 @@ export const ticketStatusSchema = z.object({
   resolutionNote: z.string().trim().max(5000).optional(),
   delayExplanation: z.string().trim().max(2000).optional(),
 });
-export const itProfileSchema = z.object({ skills: z.array(z.string().trim().min(1).max(60)).max(30), availability: z.enum(['available', 'unavailable']) });
+export const itProfileSchema = z.object({ skills: z.array(z.string().trim().min(1).max(60)).max(30) });
 export const ticketAssignmentSchema = z.object({ assigneeId: z.string().regex(/^[a-f\d]{24}$/i) });
 export const recommendationDecisionSchema = z.object({
   decision: z.enum(['approved', 'rejected', 'modified']),

@@ -11,6 +11,46 @@ export interface User {
   availability?: 'available' | 'unavailable';
 }
 
+export interface WorkforceMember {
+  id: string;
+  name: string;
+  email: string;
+  skills: string[];
+  joinedAt: string;
+  setupPending: boolean;
+  status: 'setup_pending' | 'unavailable' | 'available';
+  totalAssigned: number;
+  activeTickets: number;
+  completedTotal: number;
+  completedLast30Days: number;
+  slaBreaches: number;
+  slaMet: number;
+  capacityForecast: {
+    horizonDays: 7;
+    lookbackDays: 30;
+    expectedCompletions: number;
+    additionalTicketCapacity: number;
+    confidence: 'moderate' | 'limited' | 'insufficient_history';
+  };
+}
+
+export interface WorkforceTicketSummary {
+  id: string;
+  ticketNumber: string;
+  subject: string;
+  status: TicketStatus;
+  createdAt: string;
+  estimatedResolutionAt?: string | null;
+}
+
+export interface WorkforceTicketPage {
+  tickets: WorkforceTicketSummary[];
+  page: number;
+  pageSize: number;
+  total: number;
+  pages: number;
+}
+
 export type ModelStatus = 'available' | 'coming_soon' | 'unavailable';
 
 export interface ModelInfo {

@@ -16,6 +16,7 @@ import { buildCustomerActivity, customerTicketFilter, CUSTOMER_ESTIMATE_PROJECT,
 import { buildQueueWorkloadHistory } from '../services/queueWorkloadHistory.js';
 import { assignAutomaticPriority } from '../services/automaticPriority.js';
 import { recommendResolution } from '../services/resolutionRecommendationService.js';
+import { recommendAssignee } from '../services/recommendationEngine.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -83,10 +84,10 @@ async function serialize(ticket: any, role: string, includeDetails = true) {
 }
 
 router.get('/assignees', requireRole('admin'), asyncHandler(async (_req, res) => {
-  const users = await UserModel.find({ role: 'it_team' }).sort({ name: 1 }).select('name email skills availability').lean();
-  const counts = await TicketModel.aggregate([{ $match: { assignedTo: { $in: users.map((user: any) => user._id) }, status: { $in: ['assigned', 'in_progress'] } } }, { $group: { _id: '$assignedTo', count: { $sum: 1 } } }]);
+  const users = await UserModel.find({ role: 'it_team' }).sort({ name: 1 }).select('name email skills setupPending').lean();
+  const counts = await TicketModel.aggregate([{ $match: { assignedTo: { $in: users.map((user: any) => user._id) }, status: { $nin: ['resolved', 'closed'] } } }, { $group: { _id: '$assignedTo', count: { $sum: 1 } } }]);
   const active = new Map(counts.map((row: any) => [String(row._id), row.count]));
-  res.json({ success: true, data: { users: users.map((user: any) => ({ id: String(user._id), name: user.name, email: user.email, skills: user.skills ?? [], activeTickets: active.get(String(user._id)) ?? 0, availability: (user.availability === 'unavailable' ? 'unavailable' : (active.get(String(user._id)) ?? 0) > 0 ? 'busy' : 'available') })) } });
+  res.json({ success: true, data: { users: users.map((user: any) => { const activeTickets = active.get(String(user._id)) ?? 0; return { id: String(user._id), name: user.name, email: user.email, skills: user.skills ?? [], activeTickets, availability: user.setupPending || activeTickets ? 'unavailable' : 'available' }; }) } });
 }));
 
 router.post('/', requireRole('customer', 'it_team'), asyncHandler(async (req, res) => {
@@ -175,12 +176,29 @@ router.post('/', requireRole('customer', 'it_team'), asyncHandler(async (req, re
   signals.autoPriorityScore = automaticPriority.score;
   signals.autoPriorityRationale = automaticPriority.rationale;
   if (unavailable.length || workloadNotes.length) signals.unavailableReason = [...unavailable, ...workloadNotes].join('; ').slice(0, 200);
+  let autoAssignee: { id: string; name: string; activeTickets: number; matchingSkills: string[] } | null = null;
+  let autoAssigneeModel: any = null;
+  try {
+    const team = await UserModel.find({ role: 'it_team', setupPending: { $ne: true } }).select('name skills').sort({ name: 1 }).lean();
+    const loads = team.length ? await TicketModel.aggregate([
+      { $match: { assignedTo: { $in: team.map((member: any) => member._id) }, status: { $in: ['open', 'triaged', 'assigned', 'in_progress', 'waiting_customer'] } } },
+      { $group: { _id: '$assignedTo', count: { $sum: 1 } } },
+    ]) : [];
+    const active = new Map(loads.map((row: any) => [String(row._id), row.count as number]));
+    const candidates = team.map((member: any) => ({ id: String(member._id), name: member.name, skills: member.skills ?? [], activeTickets: active.get(String(member._id)) ?? 0 }));
+    autoAssignee = recommendAssignee(candidates, category, project);
+    if (autoAssignee) autoAssigneeModel = team.find((member: any) => String(member._id) === autoAssignee!.id) ?? null;
+    if (autoAssignee) signals.recommendedAssignee = autoAssignee;
+  } catch {
+    // Keep intake available if team-load lookup fails; Admin can use the fallback suggestion control.
+  }
   const review = signals.flaggedForReview === true;
   const ticketNumber = `OP-${Date.now().toString().slice(-8)}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
   const ticket = new TicketModel({
     ticketNumber, ownerUserId: req.user!._id, ownerRole: role,
     subject: input.subject, description: input.description, inputLanguage: input.inputLanguage, category, priority, prioritySource: 'auto', project,
-    status: 'open', aiSignals: signals,
+    status: autoAssigneeModel ? 'assigned' : 'open', aiSignals: signals,
+    ...(autoAssigneeModel ? { assignedTo: autoAssigneeModel._id } : {}),
     ...(workload ? { workloadOutlook: {
       historyStart: workload.history_start, historyEnd: workload.history_end, historyDays: workload.history_days,
       actualHistoryDays: workloadHistoryDays,
@@ -198,6 +216,7 @@ router.post('/', requireRole('customer', 'it_team'), asyncHandler(async (req, re
   });
   addAudit(ticket, req, 'ticket_created', `${role} submitted a ticket`);
   addAudit(ticket, req, 'priority_auto_assigned', `${priority}: ${automaticPriority.rationale}`);
+  if (autoAssigneeModel && autoAssignee) addAudit(ticket, req, 'ticket_assigned', `automatic: unassigned → ${autoAssignee.name}`);
   await ticket.save();
   const predictionInput = { issueCreated: createdAt, priority: modelPriority, issueType: category, project, complaint: input.description, ticketId: ticket._id };
   const historyRuns = [
@@ -376,29 +395,14 @@ router.patch('/:ticketId/assignment', requireRole('admin'), asyncHandler(async (
   const ticket = await getAccessibleTicket(String(req.params.ticketId), req.user!);
   if (ticket.ownerRole === 'it_team') throw new HttpError(409, 'Internal IT requests are handled by an admin and cannot be assigned to an IT teammate.', 'INTERNAL_ISSUE_ADMIN_HANDLED');
   const input = ticketAssignmentSchema.parse(req.body);
-  const assignee = await UserModel.findOne({ _id: input.assigneeId, role: 'it_team' });
+  const assignee = await UserModel.findOne({ _id: input.assigneeId, role: 'it_team', setupPending: { $ne: true } });
   if (!assignee) throw new HttpError(400, 'Choose an active IT Team account.', 'INVALID_ASSIGNEE');
   const previous = assignedUserId(ticket) ?? 'unassigned';
-  if (assignee.availability === 'unavailable' && previous !== assignee._id.toString()) throw new HttpError(409, 'This teammate is unavailable. Choose someone available.', 'ASSIGNEE_UNAVAILABLE');
-  const occupied = await TicketModel.exists({ assignedTo: assignee._id, status: { $in: ['assigned', 'in_progress'] }, _id: { $ne: ticket._id } });
-  if (occupied && previous !== assignee._id.toString()) throw new HttpError(409, 'This teammate is already occupied with another ticket.', 'ASSIGNEE_OCCUPIED');
   ticket.assignedTo = assignee._id;
   if (ticket.status === 'open' || ticket.status === 'triaged') ticket.status = 'assigned';
   addAudit(ticket, req, 'ticket_assigned', `${previous} → ${assignee.name}`);
   await ticket.save();
   res.json({ success: true, data: { ticket: await serialize(ticket, 'admin') }, message: 'Ticket assigned.' });
-}));
-
-router.patch('/:ticketId/priority', requireRole('admin'), asyncHandler(async (req, res) => {
-  const ticket = await getAccessibleTicket(String(req.params.ticketId), req.user!);
-  const input = z.object({ priority: z.string().trim().min(1).max(100), note: z.string().trim().min(2).max(500) }).parse(req.body);
-  const previous = ticket.priority;
-  ticket.priority = input.priority;
-  ticket.prioritySource = 'admin_override';
-  addAudit(ticket, req, 'priority_changed', `${previous} → ${input.priority}: ${input.note}`);
-  await ticket.save();
-  await startTicketSla(ticket, new Date());
-  res.json({ success: true, data: { ticket: await serialize(ticket, 'admin') }, message: 'Ticket priority updated.' });
 }));
 
 router.post('/:ticketId/recommendation-decision', requireRole('admin'), asyncHandler(async (req, res) => {

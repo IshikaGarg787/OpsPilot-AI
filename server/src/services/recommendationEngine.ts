@@ -35,7 +35,7 @@ function suggestPriority(priority: string, needsReview: boolean): string {
   return nextPriority[priority.trim().toLowerCase()] ?? priority;
 }
 
-function chooseAssignee(candidates: RecommendationCandidate[], issueType = '', project = ''): RecommendationAssessment['assignee'] {
+export function recommendAssignee(candidates: RecommendationCandidate[], issueType = '', project = ''): RecommendationAssessment['assignee'] {
   if (!candidates.length) return null;
   const issueTerms = `${issueType} ${project}`.toLowerCase().split(/[^a-z0-9]+/).filter((term) => term.length >= 3);
   const ranked = candidates.map((candidate) => {
@@ -84,7 +84,7 @@ export function buildRecommendation(input: RecommendationInput): RecommendationA
     reasons.push(`The estimated remaining work time (${estimatedRemainingHours!.toFixed(1)} hours) is longer than the ${(input.sla!.resolution.remainingHours as number).toFixed(1)} hours remaining on the SLA clock.`);
   }
 
-  const assignee = chooseAssignee(input.candidates ?? [], input.issueType, input.project);
+  const assignee = recommendAssignee(input.candidates ?? [], input.issueType, input.project);
   if (assignee) {
     reasons.push(`Suggested teammate: ${assignee.name}, with ${assignee.activeTickets} active ${assignee.activeTickets === 1 ? 'ticket' : 'tickets'}${assignee.matchingSkills.length ? ` and ${assignee.matchingSkills.length} matching ${assignee.matchingSkills.length === 1 ? 'skill' : 'skills'}` : ''}. Workload ranks first; skill fit breaks ties.`);
   } else {
@@ -94,7 +94,7 @@ export function buildRecommendation(input: RecommendationInput): RecommendationA
   if (input.workload) {
     reasons.push(`The ${input.workload.horizon}-day workload outlook estimates ${Math.round(input.workload.expectedTickets)} incoming tickets and ${input.workload.highLoadDays} high-load days; use this for team planning, not as a ticket-level SLA prediction.`);
   }
-  reasons.push('This is decision support: review and confirm any action; nothing is assigned or reprioritized automatically.');
+  reasons.push('The ticket priority and initial assignment are automated at intake. This separate recommendation is decision support and does not change the ticket until reviewed.');
 
   return {
     action: needsReview ? 'priority_review' : 'standard_queue',

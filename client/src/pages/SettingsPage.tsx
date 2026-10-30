@@ -14,7 +14,6 @@ export function SettingsPage() {
 
   const [name, setName] = useState(user?.name ?? '');
   const [skillsText, setSkillsText] = useState((user?.skills ?? []).join(', '));
-  const [availability, setAvailability] = useState<'available' | 'unavailable'>(user?.availability ?? 'available');
   const [selectedTheme, setSelectedTheme] = useState<ThemePreference>(theme);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -24,7 +23,6 @@ export function SettingsPage() {
     setName(user?.name ?? '');
     setSelectedTheme(theme);
     setSkillsText((user?.skills ?? []).join(', '));
-    setAvailability(user?.availability ?? 'available');
   }, [theme, user?.name, user?.skills, user?.availability]);
 
   async function submit(event: FormEvent) {
@@ -52,9 +50,9 @@ export function SettingsPage() {
     setError('');
     setMessage('');
     try {
-      const result = await api.users.updateItProfile({ skills: skillsText.split(',').map((value) => value.trim()).filter(Boolean), availability });
-      if (user) setUser({ ...user, skills: result.profile.skills, availability: result.profile.availability });
-      setMessage('Skills and availability saved.');
+      const result = await api.users.updateItProfile({ skills: skillsText.split(',').map((value) => value.trim()).filter(Boolean) });
+      if (user) setUser({ ...user, skills: result.profile.skills });
+      setMessage('Skills saved. Work status updates automatically from your assigned active tickets.');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'IT profile could not be saved.');
     } finally {
@@ -90,21 +88,14 @@ export function SettingsPage() {
         </Card>
 
         {user?.role === 'it_team' && (
-          <Card title="IT skills and availability">
+          <Card title="IT skills">
             <form className="settings-form" onSubmit={saveItProfile}>
               <label className="field">
                 <span>Skills</span>
                 <input value={skillsText} onChange={(event) => setSkillsText(event.target.value)} placeholder="Networking, Windows, account access" />
                 <small className="field-help">Separate skills with commas so Admins can match work to your experience.</small>
               </label>
-              <label className="field">
-                <span>Availability</span>
-                <select value={availability} onChange={(event) => setAvailability(event.target.value as 'available' | 'unavailable')}>
-                  <option value="available">Available for work</option>
-                  <option value="unavailable">Unavailable</option>
-                </select>
-              </label>
-              <small className="field-help">An active assigned ticket also marks you as occupied.</small>
+              <small className="field-help">Work status is calculated automatically from your open assigned tickets.</small>
               <button className="button button-primary" type="submit" disabled={busy}><Save size={16} />Save IT profile</button>
             </form>
           </Card>

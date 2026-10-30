@@ -1,6 +1,6 @@
-import { Activity, BarChart3, BrainCircuit, ChevronDown, Clock3, Gauge, History, LayoutDashboard, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings, Ticket, UserRoundCog, Plus, X, ShieldCheck, ListChecks } from 'lucide-react';
+import { Activity, BarChart3, BrainCircuit, ChevronDown, Clock3, Gauge, History, LayoutDashboard, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings, Ticket, UserRoundCog, Plus, X, ShieldCheck, ListChecks, Users } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { NavLink, useLocation, useNavigate, useOutlet } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { Logo } from './Logo';
 import { ThemeToggle } from './ThemeToggle';
@@ -14,7 +14,7 @@ const adminNavItems = [
   { to: '/app/models', label: 'Model Center', icon: Gauge },
   { to: '/app/history', label: 'Prediction History', icon: History },
   { to: '/app/analytics', label: 'Analytics', icon: BarChart3 },
-  { to: '/app/workload-forecasting', label: 'Workload Forecasting', icon: Gauge },
+  { to: '/app/workforce', label: 'IT Workforce', icon: Users },
   { to: '/app/sla', label: 'SLA Management', icon: ShieldCheck },
   { to: '/app/users', label: 'Users & Roles', icon: UserRoundCog },
   { to: '/app/settings', label: 'Settings', icon: Settings },
@@ -46,8 +46,7 @@ const pageNames: Record<string, string> = {
   '/app/analytics': 'Analytics',
   '/app/settings': 'Settings',
   '/app/operational-risk': 'Operational Risk',
-  '/app/workload-forecasting': 'Workload Forecasting',
-  '/app/capacity-plans': 'Capacity Scenarios',
+  '/app/workforce': 'IT Workforce',
   '/app/users': 'Users & Roles',
   '/app/sla': 'SLA Management',
 };
@@ -61,7 +60,8 @@ export function AppShell() {
   const reduceMotion = useReducedMotion();
   const outlet = useOutlet();
   const routeContentRef = useRef<HTMLDivElement>(null);
-  const pageName = pageNames[location.pathname] ?? (location.pathname.startsWith('/app/tickets/') ? 'Ticket detail' : 'Workspace');
+  const isWorkforceMemberPage = /^\/app\/workforce\/[^/]+$/.test(location.pathname);
+  const pageName = pageNames[location.pathname] ?? (location.pathname.startsWith('/app/tickets/') ? 'Ticket detail' : isWorkforceMemberPage ? 'Member profile' : 'Workspace');
   const navItems = user?.role === 'admin' ? adminNavItems : user?.role === 'customer' ? customerNavItems : teamNavItems;
   const initials = user?.name.split(' ').map((name) => name[0]).slice(0, 2).join('').toUpperCase() ?? 'OP';
 
@@ -161,9 +161,10 @@ export function AppShell() {
             <Menu size={20} />
           </button>
           <div className="topbar-context">
-            <div className="breadcrumb">
-              <span>OpsPilot AI</span>
+            <div className="breadcrumb" aria-label="Breadcrumb">
+              <Link to="/app" className="breadcrumb-link">OpsPilot AI</Link>
               <span className="slash">/</span>
+              {isWorkforceMemberPage ? <><Link to="/app/workforce" className="breadcrumb-link">IT Workforce</Link><span className="slash">/</span></> : null}
               <strong>{pageName}</strong>
             </div>
           </div>

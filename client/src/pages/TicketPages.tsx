@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { AlertTriangle, ArrowRight, CheckCircle2, Clock3, Download, FileUp, Lightbulb, ListChecks, MessageSquareText, Paperclip, Play, Plus, RefreshCw, ShieldAlert, Sparkles, Ticket as TicketIcon } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, Clock3, Download, FileUp, Lightbulb, ListChecks, MessageSquareText, Paperclip, Play, Plus, RefreshCw, ShieldAlert, Sparkles, Ticket as TicketIcon } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Card, EmptyState, ErrorState, LoadingState, Notice, PageIntro } from '../components/ui';
 import { CustomerTicketsTable } from '../components/CustomerTicketsTable';
@@ -88,6 +88,9 @@ function StaffTicketListPage() {
   const admin = user?.role === 'admin';
   const [tickets, setTickets] = useState<Ticket[] | null>(null);
   const [error, setError] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('');
+  const [customerQueuePage, setCustomerQueuePage] = useState(1);
+  const [itQueuePage, setItQueuePage] = useState(1);
   const [historyBusy, setHistoryBusy] = useState(false);
   const [historyMessage, setHistoryMessage] = useState('');
 
@@ -95,6 +98,8 @@ function StaffTicketListPage() {
     setError('');
     try {
       setTickets((await api.tickets.list()).tickets);
+      setCustomerQueuePage(1);
+      setItQueuePage(1);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Tickets are unavailable.');
     }
@@ -105,10 +110,7 @@ function StaffTicketListPage() {
     setHistoryMessage('');
     try {
       const history = await api.predictions.queueWorkloadHistory();
-      const csv = [
-        'date,ticket_count,source',
-        ...history.records.map(({ date, ticket_count, data_source }) => `${date},${ticket_count},${data_source}`),
-      ].join('\n');
+      const csv = ['date,ticket_count,source', ...history.records.map(({ date, ticket_count, data_source }) => `${date},${ticket_count},${data_source}`)].join('\n');
       const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
       const anchor = document.createElement('a');
       anchor.href = url;
@@ -118,9 +120,7 @@ function StaffTicketListPage() {
       setHistoryMessage(`CSV ready: ${history.actualTicketCount} actual queue tickets and ${history.syntheticDays} simulated bootstrap days. It refreshes from the queue each time you download.`);
     } catch (err) {
       setHistoryMessage(err instanceof Error ? err.message : 'Could not prepare the queue history CSV.');
-    } finally {
-      setHistoryBusy(false);
-    }
+    } finally { setHistoryBusy(false); }
   }
 
   useEffect(() => { void load(); }, []);
@@ -143,60 +143,76 @@ function StaffTicketListPage() {
     );
   }
 
+  const priorityOptions = [...new Set(tickets.map((ticket) => ticket.priority))].sort();
+  const visibleTickets = admin && priorityFilter ? tickets.filter((ticket) => ticket.priority === priorityFilter) : tickets;
+  const customerQueue = visibleTickets.filter((ticket) => ticket.ownerRole === 'customer');
+  const itQueue = visibleTickets.filter((ticket) => ticket.ownerRole === 'it_team');
+  const ticketRows = (items: Ticket[], page = 1, onPage?: (page: number) => void) => {
+    const pageSize = 2;
+    const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
+    const pageItems = onPage ? items.slice((page - 1) * pageSize, page * pageSize) : items;
+    return <>
+    {pageItems.length ? <div className="ticket-list">
+    {pageItems.map((ticket) => (
+      <Link className="ticket-row" to={`/app/tickets/${ticket.id}`} key={ticket.id}>
+        <span className="ticket-row-icon"><TicketIcon size={18} /></span>
+        <span className="ticket-row-main">
+          <span className="ticket-number">{ticket.ticketNumber} · {ticket.category}</span>
+          <strong>{ticket.subject}</strong>
+          {user?.role === 'it_team' && <span className="ticket-origin-tag">{ticket.ownerRole === 'it_team' ? (ticket.owner === user.id ? 'Raised by me' : 'Admin handled') : 'Assigned to me'}</span>}
+          <small>{ticket.priority} priority · Updated {new Date(ticket.updatedAt).toLocaleString()}</small>
+        </span>
+        <span className={`ticket-row-status ${statusClass(ticket.status)}`}>{statusText(ticket.status)}</span>
+        <span className="ticket-row-ai">
+          {admin && ticket.recommendation?.action ? (
+            <><ShieldAlert size={15} /> {ticket.recommendation.action === 'priority_review' ? 'Review early' : 'Standard queue'} · {ticket.recommendation.state === 'pending' ? 'awaiting review' : ticket.recommendation.state?.replaceAll('_', ' ') ?? 'not reviewed'}</>
+          ) : ticket.aiSignals?.delayRiskProbability != null ? (
+            <><ShieldAlert size={15} /> {(ticket.aiSignals.delayRiskProbability * 100).toFixed(0)}% risk</>
+          ) : <span>AI pending</span>}
+        </span>
+        <ArrowRight className="ticket-row-arrow" size={17} />
+      </Link>
+    ))}
+  </div> : <EmptyState title={priorityFilter ? 'No tickets at this priority' : 'No tickets yet'} description={priorityFilter ? 'Change the priority filter to see more tickets in this queue.' : 'New tickets from this group will appear here.'} />}
+    {onPage && pageCount > 1 && <nav className="ticket-queue-pagination" aria-label="Ticket queue pagination"><span>Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, items.length)} of {items.length}</span><div><button className="button button-secondary button-small" type="button" aria-label="Previous page" disabled={page <= 1} onClick={() => onPage(page - 1)}><ArrowLeft size={14} /> Previous</button><span>Page {page} of {pageCount}</span><button className="button button-secondary button-small" type="button" aria-label="Next page" disabled={page >= pageCount} onClick={() => onPage(page + 1)}>Next <ArrowRight size={14} /></button></div></nav>}
+    </>;
+  };
+
   return (
     <div className="page-stack">
       <PageIntro
         eyebrow={admin ? 'Central operations' : user?.role === 'it_team' ? 'IT team workspace' : 'Customer workspace'}
         title={admin ? 'Ticket queue' : 'My tickets'}
         description={admin ? 'Review, assign, and manage tickets across the workspace.' : user?.role === 'it_team' ? 'Track issues you submitted and work assigned to you.' : 'Track your requests and read the latest support response.'}
-        action={admin
-          ? <button className="button button-secondary" type="button" onClick={() => void downloadQueueHistory()} disabled={historyBusy}><Download size={15} /> {historyBusy ? 'Preparing CSV…' : 'Download workload CSV'}</button>
-          : <Link className="button button-primary" to="/app/tickets/new"><Plus size={16} /> Raise a ticket</Link>}
+        action={admin ? <button className="button button-secondary" type="button" onClick={() => void downloadQueueHistory()} disabled={historyBusy}><Download size={15} /> {historyBusy ? 'Preparing CSV…' : 'Download workload CSV'}</button> : <Link className="button button-primary" to="/app/tickets/new"><Plus size={16} /> Raise a ticket</Link>}
       />
       {admin && historyMessage && <Notice variant={historyMessage.startsWith('CSV ready:') ? 'success' : 'warning'}>{historyMessage}</Notice>}
       {admin && (
         <div className="ticket-admin-links">
           <Link to="/app/recommendations">Review recommendations <ArrowRight size={15} /></Link>
           <Link to="/app/models">Model health <ArrowRight size={15} /></Link>
-          <Link to="/app/workload-forecasting">Workload outlook <ArrowRight size={15} /></Link>
         </div>
       )}
-      <Card className="ticket-list-card">
+      {admin ? <>
         <div className="ticket-list-toolbar">
-          <div><strong>{tickets.length}</strong><span> {admin ? 'recent workspace tickets' : 'tickets in your workspace'}</span></div>
+          <div><strong>{visibleTickets.length}</strong><span> tickets across both queues</span></div>
+          <label className="field ticket-queue-priority-filter"><span>Priority</span><select value={priorityFilter} onChange={(event) => { setPriorityFilter(event.target.value); setCustomerQueuePage(1); setItQueuePage(1); }}><option value="">All priorities</option>{priorityOptions.map((value) => <option key={value}>{value}</option>)}</select></label>
           <button className="button button-ghost button-small" onClick={() => void load()}><RefreshCw size={14} /> Refresh</button>
         </div>
-        {tickets.length ? (
-          <div className="ticket-list">
-            {tickets.map((ticket) => (
-              <Link className="ticket-row" to={`/app/tickets/${ticket.id}`} key={ticket.id}>
-                <span className="ticket-row-icon"><TicketIcon size={18} /></span>
-                <span className="ticket-row-main">
-                  <span className="ticket-number">{ticket.ticketNumber} · {ticket.category}</span>
-                  {user?.role === 'it_team' && <span className="ticket-origin-tag">{ticket.ownerRole === 'it_team' ? (ticket.owner === user.id ? 'Raised by me' : 'Admin handled') : 'Assigned to me'}</span>}
-                  <strong>{ticket.subject}</strong>
-                  <small>{user?.role === 'customer' && ticket.priority === 'unknown' ? 'Priority pending support review' : `${ticket.priority} priority`} · Updated {new Date(ticket.updatedAt).toLocaleString()}</small>
-                </span>
-                <span className={`ticket-row-status ${statusClass(ticket.status)}`}>{statusText(ticket.status)}</span>
-                <span className="ticket-row-ai">
-                  {user?.role === 'customer' ? (
-                    ticket.aiSignals?.resolutionHours != null ? <><Clock3 size={15} /> ~{hoursText(ticket.aiSignals.resolutionHours)} to resolve</> : <span>Resolution estimate unavailable</span>
-                  ) : admin && ticket.recommendation?.action ? (
-                    <><ShieldAlert size={15} /> {ticket.recommendation.action === 'priority_review' ? 'Review early' : 'Standard queue'} · {ticket.recommendation.state === 'pending' ? 'awaiting review' : ticket.recommendation.state?.replaceAll('_', ' ') ?? 'not reviewed'}</>
-                  ) : ticket.aiSignals?.delayRiskProbability != null ? (
-                    <><ShieldAlert size={15} /> {(ticket.aiSignals.delayRiskProbability * 100).toFixed(0)}% risk</>
-                  ) : (
-                    <span>AI pending</span>
-                  )}
-                </span>
-                <ArrowRight className="ticket-row-arrow" size={17} />
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <EmptyState title="No tickets yet" description={admin ? 'New customer and IT Team submissions will appear in this queue.' : 'Create a support ticket to start a conversation.'} action={!admin ? <Link className="button button-secondary" to="/app/tickets/new">Raise your first ticket</Link> : undefined} />
-        )}
-      </Card>
+        <div className="ticket-admin-queues">
+          <Card className="ticket-list-card ticket-admin-queue-card" title="Customer tickets" action={<span className="ticket-queue-count">{customerQueue.length} total</span>}>
+            <p className="ticket-queue-caption">Requests submitted from customer accounts</p>
+            {ticketRows(customerQueue, customerQueuePage, setCustomerQueuePage)}
+          </Card>
+          <Card className="ticket-list-card ticket-admin-queue-card" title="IT Team tickets" action={<span className="ticket-queue-count">{itQueue.length} total</span>}>
+            <p className="ticket-queue-caption">Internal issues raised by IT members</p>
+            {ticketRows(itQueue, itQueuePage, setItQueuePage)}
+          </Card>
+        </div>
+      </> : <Card className="ticket-list-card">
+        <div className="ticket-list-toolbar"><div><strong>{visibleTickets.length}</strong><span> tickets in your workspace</span></div><button className="button button-ghost button-small" onClick={() => void load()}><RefreshCw size={14} /> Refresh</button></div>
+        {ticketRows(visibleTickets)}
+      </Card>}
     </div>
   );
 }
@@ -340,7 +356,8 @@ export function TicketDetailPage() {
   const customer = user?.role === 'customer';
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
-  const [assignees, setAssignees] = useState<Array<{ id: string; name: string; email: string; skills: string[]; activeTickets: number; availability: 'available' | 'busy' | 'unavailable' }>>([]);
+  const [assignees, setAssignees] = useState<Array<{ id: string; name: string; email: string; skills: string[]; activeTickets: number; availability: 'available' | 'unavailable' }>>([]);
+  const [fallbackSuggestion, setFallbackSuggestion] = useState<{ id: string; name: string; activeTickets: number; matchingSkills: string[] } | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -349,7 +366,6 @@ export function TicketDetailPage() {
   const [visibility, setVisibility] = useState<'public' | 'internal'>('public');
   const [workflowAction, setWorkflowAction] = useState<'waiting_customer' | 'resolve' | ''>('');
   const [status, setStatus] = useState<TicketStatus>('open');
-  const [priority, setPriority] = useState('');
   const [adminNote, setAdminNote] = useState('');
   const [recommendationAction, setRecommendationAction] = useState<'priority_review' | 'standard_queue'>('priority_review');
   const [resolutionRecommendation, setResolutionRecommendation] = useState<ResolutionRecommendation | null>(null);
@@ -362,9 +378,13 @@ export function TicketDetailPage() {
       const next = (await api.tickets.get(ticketId)).ticket;
       setTicket(next);
       setStatus(next.status);
-      setPriority(next.priority);
       setRecommendationAction(next.recommendation?.action ?? 'priority_review');
-      if (admin) setAssignees((await api.tickets.assignees()).users);
+      if (admin) {
+        const team = (await api.tickets.assignees()).users;
+        setAssignees(team);
+        const suggested = team.filter((member) => member.availability !== 'unavailable').sort((a, b) => a.activeTickets - b.activeTickets || a.name.localeCompare(b.name))[0];
+        setFallbackSuggestion(!next.assignedTo && !next.aiSignals?.recommendedAssignee && suggested ? { id: suggested.id, name: suggested.name, activeTickets: suggested.activeTickets, matchingSkills: [] } : null);
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'This ticket is unavailable.');
     }
@@ -445,6 +465,7 @@ export function TicketDetailPage() {
   const canUpdateStatus = admin || canManageAsIT;
   const estimatePassed = !!ticket.estimatedResolutionAt && Date.now() > new Date(ticket.estimatedResolutionAt).getTime();
   const inputLanguageLabel = ({ auto: 'Mixed / auto', hindi: 'Hindi', english: 'English', hinglish: 'Hinglish' } as const)[ticket.inputLanguage ?? 'auto'];
+  const suggestedAssignee = ticket.aiSignals?.recommendedAssignee ?? fallbackSuggestion;
 
   return (
     <div className="page-stack ticket-page-wrapper">
@@ -516,11 +537,6 @@ export function TicketDetailPage() {
                 <small>{ticket.workloadOutlook.highLoadDays} high-load days · based on {ticket.workloadOutlook.historyDays} days of history</small>
               </div>
               <small className="field-help">{ticket.workloadOutlook.historyStart} to {ticket.workloadOutlook.historyEnd} · {ticket.workloadOutlook.actualHistoryDays ?? ticket.workloadOutlook.historyDays} real history days · refreshed {ticket.workloadOutlook.generatedAt ? new Date(ticket.workloadOutlook.generatedAt).toLocaleString() : 'recently'}</small>
-              {admin && (
-                <Link className="button button-ghost button-full button-top-gap" to="/app/capacity-plans" state={{ ticket }}>
-                  Compare capacity scenarios <ArrowRight size={15} />
-                </Link>
-              )}
             </Card>
           )}
                 </>
@@ -528,7 +544,7 @@ export function TicketDetailPage() {
           </div>
           )}
 
-          {!(itTeam && ticket.description.trim().startsWith('DEMO DATA ONLY')) && <Card title="Complaint">
+          {!admin && !(itTeam && ticket.description.trim().startsWith('DEMO DATA ONLY')) && <Card title="Complaint">
             <div className="ticket-description">{ticket.description}</div>
             <div className="ticket-meta-row">
               <span className={`context-chip priority-chip priority-${ticket.priority.toLowerCase().replaceAll(' ', '-')}`}>{customer && ticket.priority === 'unknown' ? 'Priority pending support review' : `${ticket.priority} priority`}</span>
@@ -762,18 +778,12 @@ export function TicketDetailPage() {
 
             {admin && (
               <Card title="Admin controls" className="action-card-admin">
-                {ticket.ownerRole !== 'it_team' && ticket.aiSignals?.recommendedAssignee && (
+                {suggestedAssignee && (
                   <div className="recommendation-review">
-                    <span className="eyebrow">Assignment suggestion</span>
-                    <strong>{ticket.aiSignals.recommendedAssignee.name}</strong>
-                    <small>Suggested from current active workload ({ticket.aiSignals.recommendedAssignee.activeTickets}); skill fit breaks ties{ticket.aiSignals.recommendedAssignee.matchingSkills?.length ? ` · skills: ${ticket.aiSignals.recommendedAssignee.matchingSkills.join(', ')}` : ''}. Confirm availability and fit before assigning.</small>
-                    <button
-                      className="button button-secondary button-small"
-                      disabled={busy || ticket.assignedTo?.id === ticket.aiSignals.recommendedAssignee.id}
-                      onClick={() => void run(() => api.tickets.assign(ticket.id, ticket.aiSignals!.recommendedAssignee!.id))}
-                    >
-                      Assign suggested teammate
-                    </button>
+                    <span className="eyebrow">{ticket.assignedTo?.id === suggestedAssignee.id ? 'Automatic assignment' : 'Assignment suggestion'}</span>
+                    <strong>{ticket.assignedTo?.id === suggestedAssignee.id ? `Assigned to ${suggestedAssignee.name}` : suggestedAssignee.name}</strong>
+                    <small>Lowest active workload is preferred; matching skills break ties. {suggestedAssignee.activeTickets} active tickets at assignment time{suggestedAssignee.matchingSkills?.length ? ` · skills: ${suggestedAssignee.matchingSkills.join(', ')}` : ''}.</small>
+                    {ticket.assignedTo?.id !== suggestedAssignee.id && <button className="button button-secondary button-small" disabled={busy} onClick={() => void run(() => api.tickets.assign(ticket.id, suggestedAssignee.id))}>Assign suggested teammate</button>}
                   </div>
                 )}
                 {ticket.ownerRole !== 'it_team' && <label className="field">
@@ -784,33 +794,17 @@ export function TicketDetailPage() {
                   >
                     <option value="">Unassigned</option>
                     {assignees.map((person) => (
-                      <option key={person.id} value={person.id} disabled={person.availability !== 'available' && person.id !== ticket.assignedTo?.id}>
+                      <option key={person.id} value={person.id} disabled={person.availability === 'unavailable' && person.id !== ticket.assignedTo?.id}>
                         {person.name} · {person.availability} · {person.activeTickets} active · {person.skills.join(', ') || 'skills not set'}
                       </option>
                     ))}
                   </select>
                 </label>}
-                <label className="field">
-                  <span>Priority{ticket.prioritySource === 'auto' ? ' · assigned automatically' : ticket.prioritySource === 'admin_override' ? ' · manually overridden' : ''}</span>
-                  <select value={priority} onChange={(e) => setPriority(e.target.value)}>
-                    <option>{priority}</option>
-                    <option>Highest</option>
-                    <option>High</option>
-                    <option>Medium</option>
-                    <option>Low</option>
-                    <option>Lowest</option>
-                  </select>
-                </label>
-                <button
-                  className="button button-secondary button-full"
-                  disabled={busy || priority === ticket.priority}
-                  onClick={() => void run(() => api.tickets.updatePriority(ticket.id, priority, 'Admin queue review'))}
-                >
-                  Apply manual override
-                </button>
-                {ticket.prioritySource === 'auto' && ticket.aiSignals?.autoPriorityRationale && (
-                  <small className="field-help">Automatically assigned: {ticket.priority}. {ticket.aiSignals.autoPriorityRationale} Use the selector only when an override is needed.</small>
-                )}
+                <div className="recommendation-review">
+                  <span className="eyebrow">Model-assigned priority</span>
+                  <strong>{ticket.priority}</strong>
+                  <small>{ticket.aiSignals?.autoPriorityRationale ?? 'Priority is evaluated automatically from the available risk, resolution, and workload model signals.'}</small>
+                </div>
                 <div className="recommendation-review">
                   <span className="eyebrow">Decision support recommendation</span>
                   <strong>{ticket.recommendation?.action === 'priority_review' ? 'Review early' : ticket.recommendation?.action === 'standard_queue' ? 'Standard queue' : 'No recommendation'}</strong>
