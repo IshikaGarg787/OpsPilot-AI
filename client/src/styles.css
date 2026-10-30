@@ -820,6 +820,19 @@ html, body, #root { max-width: 100%; min-width: 0; overflow-x: clip; }
 .ticket-detail-layout .ticket-ai-signal small,
 .ticket-detail-layout .ticket-ai-note,
 .ticket-detail-layout .field-help { overflow-wrap: anywhere; }
+.ticket-team-summary-grid { display: grid; gap: 0 18px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ticket-team-summary-item { border-bottom: 1px solid var(--border); display: grid; gap: 6px; min-width: 0; padding: 12px 0; }
+.ticket-team-summary-item > span { align-items: center; color: var(--text-soft); display: flex; font-size: .74rem; font-weight: 700; gap: 7px; }
+.ticket-team-summary-item > span svg { color: var(--blue); }
+.ticket-team-summary-item > strong { font-size: 1rem; text-transform: capitalize; }
+.ticket-team-summary-item > small, .ticket-risk-details > small { color: var(--muted); font-size: .7rem; line-height: 1.5; }
+.ticket-risk-details, .ticket-status-correction { margin-top: 12px; }
+.ticket-risk-details summary, .ticket-status-correction summary { color: var(--text-soft); cursor: pointer; font-size: .78rem; font-weight: 700; }
+.ticket-risk-details p { color: var(--text-soft); font-size: .78rem; line-height: 1.55; }
+.ticket-workflow-option { margin: 10px 0; }
+.ticket-workflow-option input { flex: 0 0 auto; }
+.ticket-origin-tag { align-self: flex-start; background: var(--surface-raised); border: 1px solid var(--border-strong); border-radius: 999px; color: var(--text-soft); font-size: .66rem; font-weight: 700; padding: 3px 8px; text-transform: uppercase; letter-spacing: .03em; }
+@media (max-width: 560px) { .ticket-team-summary-grid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 950px) {
   .ticket-detail-layout { grid-template-columns: minmax(0, 1fr) !important; }
   .ticket-detail-side { order: -1; }

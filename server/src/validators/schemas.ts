@@ -71,9 +71,11 @@ export const ticketResponseSchema = z.object({
   message: z.string().trim().min(1).max(5000),
   visibility: z.enum(['public', 'internal']).optional().default('public'),
   resolutionNote: z.string().trim().max(5000).optional(),
+  workflowAction: z.enum(['waiting_customer', 'resolve']).optional(),
+  delayExplanation: z.string().trim().max(2000).optional(),
 });
 export const ticketStatusSchema = z.object({
-  status: z.enum(['triaged', 'assigned', 'in_progress', 'waiting_customer', 'resolved', 'closed']),
+  status: z.enum(['open', 'triaged', 'assigned', 'in_progress', 'waiting_customer', 'resolved', 'closed']),
   resolutionNote: z.string().trim().max(5000).optional(),
   delayExplanation: z.string().trim().max(2000).optional(),
 });

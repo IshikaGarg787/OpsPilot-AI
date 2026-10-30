@@ -270,10 +270,20 @@ router.get('/', asyncHandler(async (req, res) => {
 router.get('/:ticketId', asyncHandler(async (req, res) => {
   const role = normalizedRole(req.user!);
   const ticket = await getAccessibleTicket(String(req.params.ticketId), req.user!);
+  let shouldSave = false;
+  if (role === 'admin') {
+    if (ticket.status === 'open') {
+      const previous = ticket.status;
+      ticket.status = 'triaged';
+      shouldSave = true;
+      addAudit(ticket, req, 'status_changed', `${previous} → ${ticket.status}`);
+    }
+  }
   if ((role === 'admin' || role === 'it_team') && !ticket.audit.some((entry: any) => entry.action === 'ticket_viewed')) {
     addAudit(ticket, req, 'ticket_viewed', 'Support opened the ticket');
-    await ticket.save();
+    shouldSave = true;
   }
+  if (shouldSave) await ticket.save();
   res.json({ success: true, data: { ticket: await serialize(ticket, role) } });
 }));
 
@@ -301,12 +311,40 @@ router.post('/:ticketId/responses', asyncHandler(async (req, res) => {
   const ticket = await getAccessibleTicket(String(req.params.ticketId), req.user!);
   const input = ticketResponseSchema.parse(req.body);
   const assigned = assignedUserId(ticket) === req.user!._id.toString();
-  if (role === 'it_team' && !assigned) throw new HttpError(403, 'IT updates are allowed only on assigned tickets.', 'TICKET_NOT_ASSIGNED');
+  const adminManagedInternalIssue = ticket.ownerRole === 'it_team';
+  if (role === 'it_team' && (!assigned || adminManagedInternalIssue)) throw new HttpError(403, adminManagedInternalIssue ? 'Internal IT requests are handled by an admin.' : 'IT updates are allowed only on assigned tickets.', adminManagedInternalIssue ? 'INTERNAL_ISSUE_ADMIN_HANDLED' : 'TICKET_NOT_ASSIGNED');
   const visibility = role === 'customer' ? 'public' : input.visibility;
+  if (input.workflowAction && role === 'customer') throw new HttpError(403, 'Only support staff can change ticket workflow.', 'ROLE_FORBIDDEN');
+  if (input.workflowAction && visibility !== 'public') throw new HttpError(400, 'Workflow actions need a customer-visible update.', 'WORKFLOW_UPDATE_MUST_BE_PUBLIC');
+  if (input.workflowAction === 'resolve' && !input.resolutionNote?.trim()) throw new HttpError(400, 'Add a resolution note before resolving this ticket.', 'RESOLUTION_NOTE_REQUIRED');
+  const previous = ticket.status;
+  const now = new Date();
+  const resolving = input.workflowAction === 'resolve';
+  const estimateAt = typeof ticket.aiSignals?.resolutionHours === 'number' ? ticket.createdAt.getTime() + ticket.aiSignals.resolutionHours * 60 * 60 * 1000 : null;
+  const isLate = resolving && estimateAt !== null && now.getTime() > estimateAt;
+  if (isLate && !input.delayExplanation?.trim()) throw new HttpError(400, 'This ticket is past its estimated resolution time. Add an explanation before resolving it.', 'DELAY_EXPLANATION_REQUIRED');
   ticket.responses.push({ authorId: req.user!._id, authorName: req.user!.name, authorRole: role, visibility, message: input.message, ...(role !== 'customer' && input.resolutionNote ? { resolutionNote: input.resolutionNote } : {}) } as any);
   addAudit(ticket, req, 'response_added', visibility === 'internal' ? 'Internal note added' : 'Public response added');
+  if (role === 'customer' && previous === 'waiting_customer') {
+    ticket.status = assignedUserId(ticket) ? 'in_progress' : 'open';
+    addAudit(ticket, req, 'status_changed', `${previous} → ${ticket.status}`);
+  } else if (role !== 'customer') {
+    const nextStatus = resolving ? 'resolved'
+      : input.workflowAction === 'waiting_customer' ? 'waiting_customer'
+      : previous === 'waiting_customer' || ['open', 'triaged', 'assigned'].includes(previous) ? 'in_progress'
+      : previous;
+    if (input.delayExplanation?.trim()) ticket.delayExplanation = input.delayExplanation.trim();
+    if (nextStatus !== previous) {
+      ticket.status = nextStatus;
+      if (nextStatus === 'resolved') ticket.resolutionCompletedAt = now;
+      else if (['resolved', 'closed'].includes(previous)) ticket.resolutionReopenedAt = now;
+      addAudit(ticket, req, 'status_changed', `${previous} → ${nextStatus}`);
+    }
+  }
   await ticket.save();
   if (role !== 'customer' && visibility === 'public') await recordFirstResponse(ticket);
+  if (role !== 'customer' && resolving && previous !== 'resolved' && previous !== 'closed') await recordResolution(ticket, true, now);
+  else if (role !== 'customer' && ['resolved', 'closed'].includes(previous) && ticket.status !== previous) await recordResolution(ticket, false, now);
   res.status(201).json({ success: true, data: { ticket: await serialize(ticket, role) }, message: 'Ticket update added.' });
 }));
 
@@ -315,7 +353,8 @@ router.patch('/:ticketId/status', asyncHandler(async (req, res) => {
   const ticket = await getAccessibleTicket(String(req.params.ticketId), req.user!);
   const input = ticketStatusSchema.parse(req.body);
   const assigned = assignedUserId(ticket) === req.user!._id.toString();
-  if (role !== 'admin' && !(role === 'it_team' && assigned)) throw new HttpError(403, 'Only an admin or the assigned IT teammate can update ticket status.', 'TICKET_NOT_ASSIGNED');
+  const adminManagedInternalIssue = ticket.ownerRole === 'it_team';
+  if (role !== 'admin' && !(role === 'it_team' && assigned && !adminManagedInternalIssue)) throw new HttpError(403, adminManagedInternalIssue ? 'Internal IT requests are handled by an admin.' : 'Only an admin or the assigned IT teammate can update ticket status.', adminManagedInternalIssue ? 'INTERNAL_ISSUE_ADMIN_HANDLED' : 'TICKET_NOT_ASSIGNED');
   const previous = ticket.status;
   const estimateAt = typeof ticket.aiSignals?.resolutionHours === 'number' ? ticket.createdAt.getTime() + ticket.aiSignals.resolutionHours * 60 * 60 * 1000 : null;
   const isLate = ['resolved', 'closed'].includes(input.status) && estimateAt !== null && Date.now() > estimateAt;
@@ -323,6 +362,7 @@ router.patch('/:ticketId/status', asyncHandler(async (req, res) => {
   if (input.delayExplanation) ticket.delayExplanation = input.delayExplanation.trim();
   ticket.status = input.status;
   const now = new Date();
+  if (role === 'it_team' && input.status === 'in_progress' && previous !== 'in_progress') addAudit(ticket, req, 'work_started', 'IT teammate started work on the ticket.');
   if (input.status === 'resolved' || input.status === 'closed') ticket.resolutionCompletedAt = now;
   else if (previous === 'resolved' || previous === 'closed') ticket.resolutionReopenedAt = now;
   if (input.resolutionNote) ticket.responses.push({ authorId: req.user!._id, authorName: req.user!.name, authorRole: role, visibility: 'public', message: `Status updated to ${input.status.replaceAll('_', ' ')}.`, resolutionNote: input.resolutionNote } as any);
@@ -335,6 +375,7 @@ router.patch('/:ticketId/status', asyncHandler(async (req, res) => {
 
 router.patch('/:ticketId/assignment', requireRole('admin'), asyncHandler(async (req, res) => {
   const ticket = await getAccessibleTicket(String(req.params.ticketId), req.user!);
+  if (ticket.ownerRole === 'it_team') throw new HttpError(409, 'Internal IT requests are handled by an admin and cannot be assigned to an IT teammate.', 'INTERNAL_ISSUE_ADMIN_HANDLED');
   const input = ticketAssignmentSchema.parse(req.body);
   const assignee = await UserModel.findOne({ _id: input.assigneeId, role: 'it_team' });
   if (!assignee) throw new HttpError(400, 'Choose an active IT Team account.', 'INVALID_ASSIGNEE');

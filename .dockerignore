@@ -14,7 +14,6 @@ __pycache__
 !.env.example
 *.ipynb
 ml/experiments
-ml/forecasting
 docs
 work
 *.log
