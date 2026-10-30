@@ -6,7 +6,6 @@ import { Card, EmptyState, ErrorState, LoadingState, MetricCard, PageIntro, Stat
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import type { DashboardActivity, DashboardSummary, Ticket } from '../types';
-import { CustomerTicketsTable } from '../components/CustomerTicketsTable';
 import type { CustomerDashboardData } from '../types';
 import { AdminOperationsDashboard } from '../components/AdminOperationsDashboard';
 import { SupportChatWidget } from '../components/SupportChatWidget';
@@ -113,7 +112,6 @@ function CustomerDashboardPage() {
     {!dashboard && !error && <LoadingState label="Loading your ticket overview" />}
     {counts && <div className="metrics-grid customer-metrics"><MetricCard label="Total tickets" value={number.format(counts.total)} detail="Tickets you have raised" icon={TicketIcon} accent="blue" /><MetricCard label="Open" value={number.format(counts.open)} detail="Awaiting resolution" icon={Clock3} accent="amber" /><MetricCard label="In progress" value={number.format(counts.inProgress)} detail="Being worked on" icon={Gauge} accent="violet" /><MetricCard label="Resolved" value={number.format(counts.resolved)} detail="Resolved or closed" icon={Sparkles} accent="teal" /></div>}
     {dashboard && <Card title="Recent activity" className="customer-activity-card"><div className="customer-activity-list">{dashboard.activity.length ? dashboard.activity.map((event) => <Link to={`/app/tickets/${event.ticketId}`} className="customer-activity-item" key={event.id}><span className="customer-activity-icon"><Bell size={16} /></span><span className="customer-activity-copy"><strong>{event.label}</strong><small>{event.ticketNumber} · {event.subject}</small></span><time>{date(event.createdAt)}</time></Link>) : <EmptyState title="Your support activity will appear here" description="Ticket creation, assignment and customer-visible status updates will be listed here." action={<Link className="button button-secondary" to="/app/tickets/new">Raise your first ticket</Link>} />}</div></Card>}
-    {dashboard && <CustomerTicketsTable pageSize={8} showViewAll />}
     <SupportChatWidget />
   </div>;
 }
