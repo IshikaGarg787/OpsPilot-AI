@@ -15,6 +15,7 @@ import { recordFirstResponse, recordResolution, startTicketSla } from '../servic
 import { buildCustomerActivity, customerTicketFilter, CUSTOMER_ESTIMATE_PROJECT, CUSTOMER_TICKET_CATEGORY, CUSTOMER_TICKET_PROJECT, isCustomerTicketOwner, serializeCustomerTicket, summarizeCustomerTicketCounts } from '../services/customerTickets.js';
 import { buildQueueWorkloadHistory } from '../services/queueWorkloadHistory.js';
 import { assignAutomaticPriority } from '../services/automaticPriority.js';
+import { recommendResolution } from '../services/resolutionRecommendationService.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -270,6 +271,25 @@ router.get('/:ticketId', asyncHandler(async (req, res) => {
   const role = normalizedRole(req.user!);
   const ticket = await getAccessibleTicket(String(req.params.ticketId), req.user!);
   res.json({ success: true, data: { ticket: await serialize(ticket, role) } });
+}));
+
+router.post('/:ticketId/resolution-recommendation', requireRole('it_team'), asyncHandler(async (req, res) => {
+  const ticket = await getAccessibleTicket(String(req.params.ticketId), req.user!);
+  if (assignedUserId(ticket) !== req.user!._id.toString()) {
+    throw new HttpError(403, 'Resolution guidance is available to the IT teammate assigned to this ticket.', 'TICKET_NOT_ASSIGNED');
+  }
+  if (['resolved', 'closed'].includes(ticket.status)) {
+    throw new HttpError(409, 'This ticket is already complete. Review its saved resolution notes instead.', 'TICKET_ALREADY_COMPLETE');
+  }
+  const recommendation = await recommendResolution({
+    _id: ticket._id,
+    ticketNumber: ticket.ticketNumber,
+    subject: ticket.subject,
+    description: ticket.description,
+    category: ticket.category,
+    project: ticket.project,
+  }, req.user!._id);
+  res.json({ success: true, data: { recommendation }, message: 'Ticket-specific resolution guidance prepared.' });
 }));
 
 router.post('/:ticketId/responses', asyncHandler(async (req, res) => {

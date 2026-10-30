@@ -136,6 +136,16 @@ export interface Ticket {
   createdAt: string; updatedAt: string;
 }
 
+export interface ResolutionRecommendation {
+  source: 'similar_resolved_ticket' | 'troubleshooting_playbook';
+  title: string;
+  summary: string;
+  steps: string[];
+  verification: string;
+  escalation: string;
+  precedent?: { ticketNumber: string; resolution: string };
+}
+
 export interface CustomerTicketEvent {
   id: string;
   kind: 'created' | 'assigned' | 'status' | 'resolved' | 'closed' | 'reply';
