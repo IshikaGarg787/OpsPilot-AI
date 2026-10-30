@@ -16,17 +16,26 @@ import adminRoutes from './routes/adminRoutes.js';
 import slaRoutes from './routes/slaRoutes.js';
 import supportChatRoutes from './routes/supportChatRoutes.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
+import { loadShedder } from './middleware/loadShedder.js';
 
 const app = express();
 
 app.disable('x-powered-by');
+// Production traffic reaches this service through Render's single load-balancer hop.
+if (env.nodeEnv === 'production') app.set('trust proxy', 1);
 app.use(helmet());
 app.use(cors({ origin: (origin, callback) => { if (!origin || env.clientOrigins.includes(origin)) callback(null, true); else callback(new Error('Origin is not allowed.')); }, credentials: true }));
+app.use('/api/v1', loadShedder);
+const apiLimiter = rateLimit({
+  windowMs: env.apiRateLimitWindowMs,
+  limit: env.apiRateLimitMax,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  skip: (req) => req.originalUrl.startsWith('/api/v1/health') || req.method === 'OPTIONS',
+});
+app.use('/api/v1', apiLimiter);
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
-
-const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: 'draft-8', legacyHeaders: false });
-app.use('/api/v1', apiLimiter);
 
 const originGuard: RequestHandler = (req, _res, next) => {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method) || !req.headers.origin || env.clientOrigins.includes(req.headers.origin)) next();
