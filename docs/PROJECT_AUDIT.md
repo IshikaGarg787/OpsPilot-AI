@@ -1,4 +1,4 @@
-# OpsPilot AI — Repository Audit
+# Pragya — Repository Audit
 
 **Audit scope:** supplied `OpsPilot-AI-live-forecast-integrated.zip`, extracted to this project folder. Source inspection completed 2026-10-29. The ZIP has no `.git` directory, so Git history and prior changes could not be verified.
 

@@ -1,4 +1,4 @@
-# Run the full OpsPilot AI stack with Docker Compose
+# Run the full Pragya stack with Docker Compose
 
 This setup runs the React frontend, Express API, resolution/workload model, delay-risk model, and MongoDB. Open the app through the single frontend address at `http://localhost:8080`; Nginx serves the frontend and forwards `/api/` requests internally to Express.
 

@@ -1,4 +1,4 @@
-# OpsPilot AI — ML Model Inventory
+# Pragya — ML Model Inventory
 
 This inventory distinguishes notebook experiments, exported artifacts, and capabilities actually served by the application. Artifact presence alone does not establish that an artifact is deployable or currently used.
 
@@ -31,7 +31,7 @@ This inventory distinguishes notebook experiments, exported artifacts, and capab
 - **Outputs:** daily forecast, heuristic lower/upper ranges, high-load flag and threshold, recent history, and provenance notes. The app and integrated API support 7/14-day choices.
 - **Offline evaluation:** Notebook/report describes walk-forward validation and a final test. That reported result is separate from a forecast made on arbitrary uploaded data. The live planning range is based on recent-series standard deviation, not calibrated residual quantiles, and is explicitly not labeled as a 90% interval. High-load threshold uses the last 365 non-Friday/Saturday dates, matching the dataset's Sunday–Thursday work week documented in the report.
 - **Readiness:** `/forecast/health` parses the configuration and imports XGBoost. It does not perform a model fit, so successful health is dependency/config readiness, not proof a forecast will succeed for every input history.
-- **Status:** Live workload forecasting uses the authenticated Express `POST /predictions/workload` proxy. Admins can forecast from actual daily customer-ticket counts already in OpsPilot, download those counts, or import older daily totals from a company help desk. Standalone forecasts are saved in prediction history; Admin triage also saves an outlook on its linked ticket. Ticket-level imports filter to `Ticket`, `Service`, and `HD Service` before aggregation; true capacity inputs are not present.
+- **Status:** Live workload forecasting uses the authenticated Express `POST /predictions/workload` proxy. Admins can forecast from actual daily customer-ticket counts already in Pragya, download those counts, or import older daily totals from a company help desk. Standalone forecasts are saved in prediction history; Admin triage also saves an outlook on its linked ticket. Ticket-level imports filter to `Ticket`, `Service`, and `HD Service` before aggregation; true capacity inputs are not present.
 
 ## Cross-model product contract
 

@@ -114,7 +114,7 @@ function StaffTicketListPage() {
       const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = 'opspilot-queue-workload-history.csv';
+      anchor.download = 'pragya-queue-workload-history.csv';
       anchor.click();
       URL.revokeObjectURL(url);
       setHistoryMessage(`CSV ready: ${history.actualTicketCount} actual queue tickets and ${history.syntheticDays} simulated bootstrap days. It refreshes from the queue each time you download.`);
@@ -564,7 +564,7 @@ export function TicketDetailPage() {
 
           {canManageAsIT && !['resolved', 'closed'].includes(ticket.status) && (
             <Card title="Resolution recommendation" className="ticket-resolution-recommendation">
-              <p className="ticket-guidance-intro">Get a safe troubleshooting path for this ticket. OpsPilot checks your resolved IT tickets for a similar case first; if none fits, it uses a checklist matched to the issue.</p>
+              <p className="ticket-guidance-intro">Get a safe troubleshooting path for this ticket. Pragya checks your resolved IT tickets for a similar case first; if none fits, it uses a checklist matched to the issue.</p>
               {!resolutionRecommendation && (
                 <button className="button button-secondary" type="button" onClick={() => void getResolutionRecommendation()} disabled={resolutionRecommendationBusy}>
                   {resolutionRecommendationBusy ? <><span className="button-spinner" /> Preparing guidance…</> : <><Lightbulb size={16} /> Get resolution recommendation</>}

@@ -193,7 +193,7 @@ def _historical_evidence(history: pd.DataFrame, request: DelayRiskRequest, creat
     return evidence
 
 
-app = FastAPI(title="OpsPilot AI Delay-Risk Service", version="1.0.0")
+app = FastAPI(title="Pragya Delay-Risk Service", version="1.0.0")
 
 
 @app.get("/health")

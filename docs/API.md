@@ -1,4 +1,4 @@
-# OpsPilot API reference
+# Pragya API reference
 
 Base URL: `http://localhost:5000/api/v1`
 
@@ -21,7 +21,7 @@ Invoke-RestMethod http://localhost:5000/api/v1/health/ready
 
 ## Support assistant (Customer and IT Team)
 
-`POST /support-chat` is authenticated and limited to Customer and IT Team roles. It accepts the last 1–12 user/assistant messages (`content` up to 2,000 characters each) and returns an answer with mode `static_data`, `local_model`, or `retrieval_only`. The server ranks role-appropriate workflow guidance and at most three relevant tickets from the signed-in user's own records (for IT Team: created or assigned tickets), omitting internal responses. Ticket data is redacted for common credentials, email addresses, and payment-card-like numbers. Common help questions and ticket status lookups receive deterministic replies from retrieved data. For other questions, reachable Ollama receives retrieved context at `OLLAMA_BASE_URL`; if it is unavailable, the API returns a static retrieval answer. No API key or external AI service is used. Chat transcripts are held in browser memory and are not persisted by OpsPilot. The assistant cannot change tickets, priority, assignments, or SLAs.
+`POST /support-chat` is authenticated and limited to Customer and IT Team roles. It accepts the last 1–12 user/assistant messages (`content` up to 2,000 characters each) and returns an answer with mode `static_data`, `local_model`, or `retrieval_only`. The server ranks role-appropriate workflow guidance and at most three relevant tickets from the signed-in user's own records (for IT Team: created or assigned tickets), omitting internal responses. Ticket data is redacted for common credentials, email addresses, and payment-card-like numbers. Common help questions and ticket status lookups receive deterministic replies from retrieved data. For other questions, reachable Ollama receives retrieved context at `OLLAMA_BASE_URL`; if it is unavailable, the API returns a static retrieval answer. No API key or external AI service is used. Chat transcripts are held in browser memory and are not persisted by Pragya. The assistant cannot change tickets, priority, assignments, or SLAs.
 
 This is retrieval-augmented generation, not model fine-tuning: the service retrieves built-in support guidance and authorized ticket context, then supplies those snippets to a pretrained local model. The current retriever uses lexical term overlap; it does not require a vector database or API key.
 
@@ -134,7 +134,7 @@ The standalone workload page uses these authenticated Express routes. Express va
 
 ### Generate a forecast
 
-`GET /predictions/workload/history` is Admin-only. It returns daily customer-ticket counts from OpsPilot, fills dates without tickets with zero, and reports whether at least 120 complete days are available. This avoids requiring a CSV once the workspace has enough history.
+`GET /predictions/workload/history` is Admin-only. It returns daily customer-ticket counts from Pragya, fills dates without tickets with zero, and reports whether at least 120 complete days are available. This avoids requiring a CSV once the workspace has enough history.
 
 `POST /predictions/workload` accepts either ticket-level records or daily aggregates. At least 120 calendar days between the first and last valid date are required. Counts must be finite whole numbers at or above zero. Timestamps are normalized to UTC dates, and gaps are filled with zero. Successful forecasts are saved as `workload-forecasting` entries in prediction history. The optional `source` field is `workspace_ticket_history` or `uploaded_csv`.
 
@@ -152,6 +152,6 @@ Example request (records abbreviated; a real request must cover at least 120 cal
 
 The API also accepts ticket-level rows such as `{"issue_created":"2024-01-01T09:30:00Z","issue_type":"Ticket"}`. Only `horizon: 7` and `horizon: 14` are supported. If `issue_type` is supplied, only `Ticket`, `Service`, and `HD Service` records are retained. The Triage and standalone pages both apply that filter in the browser before reducing ticket rows to daily counts.
 
-The workload page can download daily OpsPilot customer-ticket totals or a dated blank template (`date,ticket_count`) for importing real history from an existing help desk. The template needs actual counts entered before upload; blank counts are rejected. The response includes `history_start`, `history_end`, `history_days`, `ticket_total`, `forecast`, `recent_history`, and notes. Each forecast row includes `date`, `weekday`, `forecast`, `planning_low`, `planning_high`, `high_load_threshold`, and `high_load_flag`. `planning_low` and `planning_high` are variability-based planning estimates, not calibrated confidence limits. Forecasts are refit from the submitted data and saved to the caller's prediction history.
+The workload page can download daily Pragya customer-ticket totals or a dated blank template (`date,ticket_count`) for importing real history from an existing help desk. The template needs actual counts entered before upload; blank counts are rejected. The response includes `history_start`, `history_end`, `history_days`, `ticket_total`, `forecast`, `recent_history`, and notes. Each forecast row includes `date`, `weekday`, `forecast`, `planning_low`, `planning_high`, `high_load_threshold`, and `high_load_flag`. `planning_low` and `planning_high` are variability-based planning estimates, not calibrated confidence limits. Forecasts are refit from the submitted data and saved to the caller's prediction history.
 
 Invalid schemas, timestamps, counts, or insufficient history return HTTP 422. Missing configuration or an inference failure returns HTTP 503. The FastAPI service remains reachable only through Express for the product UI; its CORS allowlist no longer needs to include a deployed browser origin.

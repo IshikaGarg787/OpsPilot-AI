@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="460" viewBox="470 70 480 460" role="img" aria-label="Pragya mark">
+  <defs>
+    <filter id="checker-transparent" color-interpolation-filters="sRGB">
+      <feColorMatrix type="matrix" values="
+        1 0 0 0 0
+        0 1 0 0 0
+        0 0 1 0 0
+        -8 0 8 0 0" />
+    </filter>
+  </defs>
+  <image href="pragya-logo-source.jpeg" x="0" y="0" width="1408" height="1024" preserveAspectRatio="none" filter="url(#checker-transparent)" />
+</svg>

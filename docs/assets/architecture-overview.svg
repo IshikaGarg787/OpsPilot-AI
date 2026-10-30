@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 1080" role="img" aria-labelledby="title description">
-  <title id="title">OpsPilot AI ticket and recommendation architecture</title>
-  <desc id="description">Customer, IT Team, and Admin use the OpsPilot website. The Express API checks permissions, stores workspace data in MongoDB, and calls the delay-risk and resolution/workload model services. An Admin reviews an explained recommendation and confirms any action. Workload history enters through a CSV upload.</desc>
+  <title id="title">Pragya ticket and recommendation architecture</title>
+  <desc id="description">Customer, IT Team, and Admin use the Pragya website. The Express API checks permissions, stores workspace data in MongoDB, and calls the delay-risk and resolution/workload model services. An Admin reviews an explained recommendation and confirms any action. Workload history enters through a CSV upload.</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
       <path d="M0 0L10 5L0 10Z" fill="#52677d"/>
@@ -31,7 +31,7 @@
   </defs>
 
   <rect width="1500" height="1080" fill="#f5f8fb"/>
-  <text x="54" y="58" class="title">How OpsPilot turns support tickets into reviewable decisions</text>
+  <text x="54" y="58" class="title">How Pragya turns support tickets into reviewable decisions</text>
   <text x="54" y="88" class="subtitle">Actual application components and data paths · model suggestions stay under human control</text>
 
   <!-- Main application path -->
@@ -58,7 +58,7 @@
   <rect x="340" y="170" width="285" height="278" rx="15" class="card blue"/>
   <rect x="340" y="170" width="285" height="9" rx="5" fill="#3972b5"/>
   <text x="365" y="211" class="tag" fill="#3972b5">WEB APP · VERCEL</text>
-  <text x="365" y="245" class="heading">OpsPilot workspace</text>
+  <text x="365" y="245" class="heading">Pragya workspace</text>
   <text x="365" y="279" class="body">React + TypeScript</text>
   <text x="365" y="304" class="body">Role-based dashboards and</text>
   <text x="365" y="325" class="body">ticket, forecast, and admin pages</text>
