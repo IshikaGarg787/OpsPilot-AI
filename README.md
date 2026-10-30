@@ -8,7 +8,7 @@
 
 OpsPilot AI is a help-desk operations app. Customers and IT staff use it to manage support tickets. Admins use it to review the queue, understand possible delays, estimate resolution time, and plan incoming workload. The app gives people evidence to make decisions; it does not silently assign staff or change a ticket’s priority for them.
 
-> **New here?** Start with [What the app does](#what-the-app-does), then try the [live app](#try-the-live-app) or follow the [local setup](#run-it-on-your-computer).
+> **New here?** Start with [What the app does](#what-the-app-does), then try the [live app](#try-the-live-app), run it with [Docker Compose](#run-with-docker-compose), or follow the [manual local setup](#run-it-on-your-computer).
 
 ## Try the live app
 
@@ -78,6 +78,55 @@ The priority recommendation is a transparent rules-based calculation, not anothe
 The visible navigation depends on the signed-in role. The API enforces permissions too, so hiding a page in the website is not the only access check.
 
 The support assistant answers recognized help and ticket-status questions from built-in guidance and role-authorized ticket details. An optional local Ollama model can respond to unmatched questions. In the current implementation, retrieved ticket/help details are not sent as context to Ollama, so treat that fallback as general assistance rather than a verified answer about a specific ticket.
+
+## Run with Docker Compose
+
+Docker Compose builds and runs the website, API, model services, and MongoDB. You do not need to install Node.js, Python, or MongoDB on the host computer.
+
+### Requirements
+
+- Windows with Docker Desktop installed and running.
+- The repository cloned to the computer.
+
+### First run
+
+Open PowerShell in the repository folder. Create a private `.env` file with fresh random secrets, then start the stack:
+
+```powershell
+if (-not (Test-Path .env)) {
+  Copy-Item .env.docker.example .env
+  $sessionSecret = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
+  $modelApiToken = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
+  $envLines = Get-Content .env
+  $envLines = $envLines -replace '^SESSION_SECRET=.*$', "SESSION_SECRET=$sessionSecret"
+  $envLines = $envLines -replace '^MODEL_API_TOKEN=.*$', "MODEL_API_TOKEN=$modelApiToken"
+  $envLines | Set-Content -Encoding ascii .env
+}
+
+docker compose up -d --build --wait
+```
+
+Open **http://localhost:8080**. The first build downloads images and dependencies, so it may take several minutes. Create an account from this local app; accounts from another environment will not work unless both environments use the same database.
+
+If PowerShell says `docker` is not recognized after Docker Desktop is installed, reopen PowerShell. For a per-user Docker Desktop install, add its CLI folder to the current session's `PATH`:
+
+```powershell
+$dockerBin = Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\resources\bin'
+if (Test-Path "$dockerBin\docker.exe") { $env:Path = "$dockerBin;$env:Path" }
+docker compose version
+```
+
+### Useful commands
+
+```powershell
+docker compose ps             # Check service status
+docker compose logs -f        # Follow logs from all services
+docker compose logs -f api    # Follow API logs only
+docker compose down           # Stop the stack; keep saved database data
+docker compose up -d --wait   # Start it again without rebuilding
+```
+
+Compose stores database data in the persistent `opspilot_mongo_data` volume on that PC. To share the same accounts and tickets across devices, set `MONGODB_URI` in each device's private `.env` to the same MongoDB connection string, then run `docker compose up -d --build --wait`. Leave it blank to use the local MongoDB container. Never commit `.env` or share its connection string. Avoid `docker compose down --volumes` unless you intend to delete the local database.
 
 ## Run it on your computer
 
@@ -187,7 +236,7 @@ OpsPilot-AI/
 ├── server/                 Express API, access rules, ticket services, tests
 ├── ml/                     FastAPI model services, artifacts, notebooks
 ├── docs/                   Setup, architecture, API, and model notes
-├── compose.yaml            Optional local MongoDB service
+├── compose.yaml            Full local stack: website, API, model services, and MongoDB
 ├── render.yaml             Render API and model-service configuration
 └── package.json            Root scripts, including npm run dev
 ```
