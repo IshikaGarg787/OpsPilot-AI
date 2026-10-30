@@ -1,5 +1,3 @@
-export const SUPPORT_ISSUE_TYPES = new Set(['Ticket', 'Service', 'HD Service']);
-
 export interface DailyWorkloadRecord {
   date: string;
   ticket_count: number;
@@ -31,13 +29,13 @@ export function parseCsv(text: string): Record<string, string>[] {
   row.push(cell.trim());
   if (row.some(Boolean)) rows.push(row);
   if (rows.length < 2) throw new Error('Choose a CSV with a header and ticket history.');
-  const headers = rows[0].map((header) => header.replace(/^\uFEFF/, '').trim());
+  const headers = rows[0].map((header) => header.replace(/^\uFEFF/, '').trim().toLowerCase());
+  if (new Set(headers).size !== headers.length) throw new Error('CSV contains duplicate column names. Keep one date and one ticket_count column.');
   return rows.slice(1).map((values) => Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ''])));
 }
 
 export function aggregateWorkloadHistory(rows: Record<string, string>[]): DailyWorkloadRecord[] {
   const counts = new Map<string, number>();
-  const hasIssueType = rows.some((row) => Object.prototype.hasOwnProperty.call(row, 'issue_type'));
   const add = (date: string, count: number) => counts.set(date, (counts.get(date) ?? 0) + count);
 
   for (const row of rows) {
@@ -50,7 +48,6 @@ export function aggregateWorkloadHistory(rows: Record<string, string>[]): DailyW
       if (!Number.isInteger(count) || count < 0) throw new Error('Daily CSV rows need whole, non-negative ticket_count values.');
       add(day, count);
     } else if (row.issue_created) {
-      if (hasIssueType && !SUPPORT_ISSUE_TYPES.has((row.issue_type ?? '').trim())) continue;
       const time = Date.parse(row.issue_created);
       if (!Number.isFinite(time)) throw new Error('Every ticket row must have a valid issue_created timestamp.');
       add(new Date(time).toISOString().slice(0, 10), 1);
