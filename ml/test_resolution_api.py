@@ -25,16 +25,27 @@ class ResolutionModelSmokeTest(unittest.TestCase):
         self.assertNotEqual(version, runtime.metadata.get("generated_at_utc"))
         self.assertIn("resolution-time", version)
 
-    def test_unknown_category_is_rejected(self):
-        with self.assertRaises(Exception):
-            runtime.predict(
-                PredictionRequest(
-                    issue_created="2024-01-12T09:30:00Z",
-                    issue_priority="not-a-real-priority",
-                    issue_type="Bug",
-                    issue_proj="C00d3dzwj28av.ew8x3",
-                )
+    def test_model_encoder_handles_unseen_categories(self):
+        result = runtime.predict(
+            PredictionRequest(
+                issue_created="2024-01-12T09:30:00Z",
+                issue_priority="not-a-real-priority",
+                issue_type="Bug",
+                issue_proj="unseen-project",
             )
+        )
+        self.assertGreaterEqual(result["duration"], 0)
+
+    def test_ticket_values_from_screenshot_are_supported(self):
+        result = runtime.predict(
+            PredictionRequest(
+                issue_created="2026-10-29T21:02:00Z",
+                issue_priority="Highest",
+                issue_type="Assistance",
+                issue_proj="C02gg0x93",
+            )
+        )
+        self.assertGreaterEqual(result["duration"], 0)
 
 
 if __name__ == "__main__":

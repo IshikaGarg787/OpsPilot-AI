@@ -65,16 +65,16 @@ class MainModelServiceSmokeTest(unittest.TestCase):
         self.assertGreaterEqual(body["duration"], 0.0)
         self.assertTrue(body.get("model_version"))
 
-    def test_resolution_predict_rejects_unknown_category(self):
-        with self.assertRaises(Exception):
-            predict(
-                PredictionRequest(
-                    issue_created="2024-01-12T09:30:00Z",
-                    issue_priority="not-a-real-priority",
-                    issue_type="Bug",
-                    issue_proj="C00d3dzwj28av.ew8x3",
-                )
+    def test_resolution_predict_accepts_unseen_category_for_ignore_encoder(self):
+        body = predict(
+            PredictionRequest(
+                issue_created="2024-01-12T09:30:00Z",
+                issue_priority="not-a-real-priority",
+                issue_type="Bug",
+                issue_proj="unseen-project",
             )
+        )
+        self.assertGreaterEqual(body["duration"], 0.0)
 
     def test_resolution_predict_rejects_missing_field(self):
         with self.assertRaises(ValidationError):

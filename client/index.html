@@ -3,13 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0b1020" />
+    <meta name="theme-color" content="#101a28" />
     <meta name="description" content="OpsPilot AI turns operational data into decisive action." />
     <title>OpsPilot AI · Operational intelligence</title>
     <script>
       (() => {
+        const hasUserChoice = localStorage.getItem('opspilot-theme-user-selected') === 'true';
         const saved = localStorage.getItem('opspilot-theme');
-        const theme = saved === 'light' ? 'light' : 'dark';
+        const themes = ['light', 'dark', 'system', 'cyber', 'aurora'];
+        const theme = hasUserChoice && themes.includes(saved) ? saved : 'system';
         document.documentElement.dataset.theme = theme;
       })();
     </script>

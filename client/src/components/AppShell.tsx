@@ -1,7 +1,7 @@
-import { Activity, BarChart3, BrainCircuit, ChevronDown, Clock3, Gauge, History, LayoutDashboard, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings, Ticket, UserRoundCog, Plus, X, ShieldCheck } from 'lucide-react';
+import { Activity, BarChart3, BrainCircuit, ChevronDown, Clock3, Gauge, History, LayoutDashboard, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings, Ticket, UserRoundCog, Plus, X, ShieldCheck, ListChecks } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { NavLink, useLocation, useNavigate, useOutlet } from 'react-router-dom';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { Logo } from './Logo';
 import { ThemeToggle } from './ThemeToggle';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,11 +10,11 @@ const adminNavItems = [
   { to: '/app', label: 'Overview', icon: LayoutDashboard, end: true },
   { to: '/app/tickets', label: 'Ticket Queue', icon: Ticket },
   { to: '/app/triage', label: 'Pipeline', icon: BrainCircuit },
+  { to: '/app/recommendations', label: 'Recommendation Engine', icon: ListChecks },
   { to: '/app/models', label: 'Model Center', icon: Gauge },
   { to: '/app/history', label: 'Prediction History', icon: History },
   { to: '/app/analytics', label: 'Analytics', icon: BarChart3 },
   { to: '/app/workload-forecasting', label: 'Workload Forecasting', icon: Gauge },
-  { to: '/app/capacity-plans', label: 'Capacity Scenarios', icon: Activity },
   { to: '/app/sla', label: 'SLA Management', icon: ShieldCheck },
   { to: '/app/users', label: 'Users & Roles', icon: UserRoundCog },
   { to: '/app/settings', label: 'Settings', icon: Settings },
@@ -39,6 +39,7 @@ const pageNames: Record<string, string> = {
   '/app/tickets/new': 'Raise a ticket',
   '/app/predictions': 'AI Predictions',
   '/app/triage': 'Pipeline',
+  '/app/recommendations': 'Recommendation Engine',
   '/app/resolution-time': 'Resolution Time',
   '/app/models': 'Model Center',
   '/app/history': 'Prediction History',
@@ -123,22 +124,24 @@ export function AppShell() {
         <nav className="sidebar-nav" aria-label="Application navigation">
           <span className="nav-caption">{user?.role === 'admin' ? 'Admin operations' : user?.role === 'it_team' ? 'IT workspace' : 'Customer workspace'}</span>
           {navItems.map(({ to, label, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              onClick={() => setMobileOpen(false)}
-              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-              title={collapsed ? label : undefined}
-            >
-              {({ isActive }) => <>
-                {isActive && (reduceMotion
-                  ? <span className="nav-active-marker" aria-hidden="true" />
-                  : <motion.span className="nav-active-marker" layoutId="sidebar-active-marker" transition={{ type: 'spring', stiffness: 460, damping: 38 }} aria-hidden="true" />)}
-                <Icon size={18} />
-                <span>{!collapsed && label}</span>
-              </>}
-            </NavLink>
+            <Fragment key={to}>
+              {to === '/app/recommendations' && <span className="nav-caption nav-caption-spaced">Decision support</span>}
+              <NavLink
+                to={to}
+                end={end}
+                onClick={() => setMobileOpen(false)}
+                className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                title={collapsed ? label : undefined}
+              >
+                {({ isActive }) => <>
+                  {isActive && (reduceMotion
+                    ? <span className="nav-active-marker" aria-hidden="true" />
+                    : <motion.span className="nav-active-marker" layoutId="sidebar-active-marker" transition={{ type: 'spring', stiffness: 460, damping: 38 }} aria-hidden="true" />)}
+                  <Icon size={18} />
+                  <span>{!collapsed && label}</span>
+                </>}
+              </NavLink>
+            </Fragment>
           ))}
         </nav>
         <div className="sidebar-bottom">

@@ -9,7 +9,7 @@ import type { ThemePreference } from '../types';
 
 export function SettingsPage() {
   const { user, setUser, logout } = useAuth();
-  const { theme, setTheme } = useTheme();
+  const { theme, selectTheme } = useTheme();
   const navigate = useNavigate();
 
   const [name, setName] = useState(user?.name ?? '');
@@ -35,9 +35,9 @@ export function SettingsPage() {
     try {
       const profile = name.trim() !== user?.name ? await api.users.updateProfile(name) : { user };
       const backendPref = selectedTheme === 'light' ? 'light' : selectedTheme === 'system' ? 'system' : 'dark';
-      const preferences = selectedTheme !== theme ? await api.users.updatePreferences(backendPref) : { user: profile.user };
+      const preferences = await api.users.updatePreferences(backendPref);
       setUser(preferences.user);
-      setTheme(selectedTheme);
+      selectTheme(selectedTheme);
       setMessage('Settings saved to your workspace.');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Settings could not be saved.');
@@ -115,7 +115,7 @@ export function SettingsPage() {
             <button
               type="button"
               className={`theme-option ${selectedTheme === 'dark' ? 'selected' : ''}`}
-              onClick={() => { setSelectedTheme('dark'); setTheme('dark'); }}
+              onClick={() => { setSelectedTheme('dark'); selectTheme('dark'); }}
             >
               <Moon size={19} />
               <span>
@@ -128,7 +128,7 @@ export function SettingsPage() {
             <button
               type="button"
               className={`theme-option ${selectedTheme === 'light' ? 'selected' : ''}`}
-              onClick={() => { setSelectedTheme('light'); setTheme('light'); }}
+              onClick={() => { setSelectedTheme('light'); selectTheme('light'); }}
             >
               <Sun size={19} />
               <span>
@@ -141,7 +141,7 @@ export function SettingsPage() {
             <button
               type="button"
               className={`theme-option ${selectedTheme === 'cyber' ? 'selected' : ''}`}
-              onClick={() => { setSelectedTheme('cyber'); setTheme('cyber'); }}
+              onClick={() => { setSelectedTheme('cyber'); selectTheme('cyber'); }}
             >
               <Terminal size={19} />
               <span>
@@ -154,7 +154,7 @@ export function SettingsPage() {
             <button
               type="button"
               className={`theme-option ${selectedTheme === 'aurora' ? 'selected' : ''}`}
-              onClick={() => { setSelectedTheme('aurora'); setTheme('aurora'); }}
+              onClick={() => { setSelectedTheme('aurora'); selectTheme('aurora'); }}
             >
               <Leaf size={19} />
               <span>
@@ -167,7 +167,7 @@ export function SettingsPage() {
             <button
               type="button"
               className={`theme-option ${selectedTheme === 'system' ? 'selected' : ''}`}
-              onClick={() => { setSelectedTheme('system'); setTheme('system'); }}
+              onClick={() => { setSelectedTheme('system'); selectTheme('system'); }}
             >
               <Palette size={19} />
               <span>
