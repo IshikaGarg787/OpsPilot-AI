@@ -7,6 +7,7 @@ import { Card, EmptyState, ErrorState, LoadingState, PageIntro } from '../compon
 const hours = (minutes: number) => (minutes / 60).toFixed(minutes % 60 ? 2 : 0);
 const target = (value: number | null) => value == null ? '—' : `${value.toFixed(1)} h`;
 const normalizeSearch = (value: string) => value.trim().normalize('NFKC').replace(/[‐‑‒–—−]/g, '-').toLowerCase();
+const eventPageSize = 5;
 
 export function SlaManagementPage() {
   const [policies, setPolicies] = useState<SlaPolicy[] | null>(null);
@@ -18,11 +19,12 @@ export function SlaManagementPage() {
   const [priorityFilter, setPriorityFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [slaFilter, setSlaFilter] = useState('');
+  const [eventPage, setEventPage] = useState(1);
   const [draft, setDraft] = useState({ name: '', priority: '', firstResponseMinutes: '', resolutionMinutes: '' });
 
   async function load() {
     setError('');
-    try { const [p, o] = await Promise.all([api.sla.policies(), api.sla.overview()]); setPolicies(p.policies); setOverview(o); }
+    try { const [p, o] = await Promise.all([api.sla.policies(), api.sla.overview()]); setPolicies(p.policies); setOverview(o); setEventPage(1); }
     catch (e) { setError(e instanceof ApiError ? e.message : 'SLA management data could not be loaded.'); }
   }
   useEffect(() => { void load(); }, []);
@@ -56,6 +58,10 @@ export function SlaManagementPage() {
   const metrics = overview?.metrics;
   const normalizedSearch = normalizeSearch(search);
   const visibleTickets = overview?.tickets.filter((t) => (!normalizedSearch || normalizeSearch(`${t.ticketNumber} ${t.subject}`).includes(normalizedSearch)) && (!priorityFilter || t.priority === priorityFilter) && (!statusFilter || t.status === statusFilter) && (!slaFilter || t.slaSnapshot?.firstResponseStatus === slaFilter || t.slaSnapshot?.resolutionStatus === slaFilter)) ?? [];
+  const events = overview?.events ?? [];
+  const eventPages = Math.max(1, Math.ceil(events.length / eventPageSize));
+  const currentEventPage = Math.min(eventPage, eventPages);
+  const pageEvents = events.slice((currentEventPage - 1) * eventPageSize, currentEventPage * eventPageSize);
   return <div className="page-stack sla-management-page">
     <PageIntro eyebrow="Admin operations" title="SLA Management" description="Manage 24×7 calendar-time targets and monitor actual response and resolution outcomes." action={<span className="status-pill"><ShieldCheck size={15} /> Server evaluated</span>} />
     <p className="card-subtitle">Metrics cover all SLA-tracked tickets. Compliance uses resolved tickets only; response and resolution averages include records with an actual completion timestamp.</p>
@@ -73,6 +79,12 @@ export function SlaManagementPage() {
     </Card>
     <Card title={editingId ? 'Edit policy' : 'Create policy'}><form className="form-grid-two" onSubmit={(e) => void savePolicy(e)}><label className="field"><span>Policy name</span><input required minLength={2} maxLength={120} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></label><label className="field"><span>Ticket priority key</span><input required value={draft.priority} onChange={(e) => setDraft({ ...draft, priority: e.target.value })} placeholder="e.g. Critical" /></label><label className="field"><span>First-response target (minutes)</span><input type="number" min="1" max="525600" required value={draft.firstResponseMinutes} onChange={(e) => setDraft({ ...draft, firstResponseMinutes: e.target.value })} /></label><label className="field"><span>Resolution target (minutes)</span><input type="number" min="1" max="525600" required value={draft.resolutionMinutes} onChange={(e) => setDraft({ ...draft, resolutionMinutes: e.target.value })} /></label><div className="form-actions"><button className="button button-primary" disabled={busy}>{busy ? 'Saving…' : <><Save size={15} /> {editingId ? 'Save changes' : 'Create policy'}</>}</button>{editingId && <button type="button" className="button button-secondary" onClick={() => { setEditingId(null); setDraft({ name: '', priority: '', firstResponseMinutes: '', resolutionMinutes: '' }); }}>Cancel edit</button>}</div></form></Card>
     <Card title="Ticket SLA monitoring"><p className="card-subtitle">Showing {visibleTickets.length} of {overview?.tickets.length ?? 0} recent tickets. Find the real ticket ID or subject in Ticket Queue; punctuation in the ID is ignored.</p><div className="form-grid-two"><label className="field"><span>Search</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Actual ticket ID or subject" /></label><label className="field"><span>Priority</span><select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}><option value="">All priorities</option>{[...new Set(overview?.tickets.map((t) => t.priority) ?? [])].map((p) => <option key={p}>{p}</option>)}</select></label><label className="field"><span>Ticket status</span><select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}><option value="">All statuses</option>{[...new Set(overview?.tickets.map((t) => t.status) ?? [])].map((s) => <option key={s} value={s}>{s.replaceAll('_', ' ')}</option>)}</select></label><label className="field"><span>SLA status</span><select value={slaFilter} onChange={(e) => setSlaFilter(e.target.value)}><option value="">All SLA states</option><option value="breached">Breached</option><option value="at_risk">At risk</option><option value="on_track">On track</option><option value="met">Met</option></select></label></div><div className="table-wrap"><table className="data-table"><thead><tr><th>Ticket</th><th>Subject</th><th>Priority</th><th>Status</th><th>Assignee</th><th>First response deadline</th><th>Response SLA</th><th>Resolution deadline</th><th>Resolution SLA</th><th>Policy</th><th>Predicted delay risk</th></tr></thead><tbody>{visibleTickets.map((t) => <tr key={t._id}><td>{t.ticketNumber}</td><td>{t.subject}</td><td>{t.priority}</td><td>{t.status.replaceAll('_', ' ')}</td><td>{t.assignedTo?.name ?? 'Not assigned'}</td><td>{t.slaSnapshot?.firstResponseDeadlineAt ? new Date(t.slaSnapshot.firstResponseDeadlineAt).toLocaleString() : '—'}</td><td>{t.slaSnapshot?.firstResponseStatus ?? 'Not tracked'}</td><td>{t.slaSnapshot?.resolutionDeadlineAt ? new Date(t.slaSnapshot.resolutionDeadlineAt).toLocaleString() : '—'}</td><td>{t.slaSnapshot?.resolutionStatus ?? 'Not tracked'}</td><td>{t.slaSnapshot?.policyName ?? 'No active policy'}</td><td>{t.aiSignals?.delayRiskCategory ? `${t.aiSignals.delayRiskCategory}${t.aiSignals.delayRiskProbability == null ? '' : ` · ${(t.aiSignals.delayRiskProbability * 100).toFixed(0)}%`}` : 'Unavailable'}</td></tr>)}</tbody></table></div>{overview?.tickets.length && !visibleTickets.length ? <EmptyState title="No tickets match these filters" description={search ? `No ticket contains “${search}”. Clear search or filters to see tickets.` : "Clear the selected filters to see tickets."} /> : !overview?.tickets.length && <EmptyState title="No tickets found" description="Create a ticket first, or confirm this backend has ticket records." />}</Card>
-    <Card title="SLA events and audit history">{overview?.events.length ? <div className="ticket-audit-list">{overview.events.map((event) => <div key={event._id}><strong>{event.kind.replaceAll('_', ' ')}{event.ticketNumber ? ` · ${event.ticketNumber}` : ''}</strong><span>{new Date(event.createdAt).toLocaleString()}</span><small>{event.message}</small></div>)}</div> : <EmptyState title="No SLA events yet" description="Policy changes, SLA starts, warnings, and outcomes appear here as they occur." />}</Card>
+    <Card title="SLA events and audit history">
+      {events.length ? <>
+        <p className="card-subtitle">Showing {(currentEventPage - 1) * eventPageSize + 1}–{Math.min(currentEventPage * eventPageSize, events.length)} of {events.length} events · 5 per page</p>
+        <div className="ticket-audit-list">{pageEvents.map((event) => <div key={event._id}><strong>{event.kind.replaceAll('_', ' ')}{event.ticketNumber ? ` · ${event.ticketNumber}` : ''}</strong><span>{new Date(event.createdAt).toLocaleString()}</span><small>{event.message}</small></div>)}</div>
+        {eventPages > 1 && <div className="pagination"><span>Page {currentEventPage} of {eventPages}</span><div className="form-actions"><button className="button button-secondary button-small" disabled={currentEventPage === 1} onClick={() => setEventPage(currentEventPage - 1)}>Previous</button><button className="button button-secondary button-small" disabled={currentEventPage === eventPages} onClick={() => setEventPage(currentEventPage + 1)}>Next</button></div></div>}
+      </> : <EmptyState title="No SLA events yet" description="Policy changes, SLA starts, warnings, and outcomes appear here as they occur." />}
+    </Card>
   </div>;
 }
