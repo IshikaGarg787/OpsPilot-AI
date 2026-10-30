@@ -296,13 +296,12 @@ router.post('/:ticketId/resolution-recommendation', requireRole('it_team'), asyn
     throw new HttpError(409, 'This ticket is already complete. Review its saved resolution notes instead.', 'TICKET_ALREADY_COMPLETE');
   }
   const recommendation = await recommendResolution({
-    _id: ticket._id,
     ticketNumber: ticket.ticketNumber,
     subject: ticket.subject,
     description: ticket.description,
     category: ticket.category,
     project: ticket.project,
-  }, req.user!._id);
+  });
   res.json({ success: true, data: { recommendation }, message: 'Ticket-specific resolution guidance prepared.' });
 }));
 

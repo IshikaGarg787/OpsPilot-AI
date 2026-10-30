@@ -14,6 +14,18 @@ const statusClass = (status: TicketStatus) => `ticket-status ticket-status-${sta
 
 function localResolutionFallback(ticket: Ticket): ResolutionRecommendation {
   const issue = `${ticket.category} ${ticket.subject} ${ticket.description}`.toLowerCase();
+  if (/analytics|workspace|data portal|reporting workspace/.test(issue) && /access|permission|role|grant|entitlement|cannot open|can't open|unable to open/.test(issue)) return {
+    source: 'troubleshooting_playbook', title: 'Restore analytics workspace access',
+    summary: 'Check the user’s workspace membership and approved role, then correct only the missing entitlement.',
+    steps: [
+      'Confirm the requester’s account, the exact analytics workspace, and the role they need; check that the request has data-owner approval.',
+      'Check the account is active and compare its workspace group or role with a teammate who has the approved access.',
+      'If the approved group is missing, add the user to that group or provision the requested least-privilege role; do not grant workspace-admin access as a shortcut.',
+      'Have the user sign out and back in to refresh SSO. If membership is already correct, inspect the workspace authorization or provisioning event at the reported time.',
+    ],
+    verification: 'Have the user sign back in, open the workspace, and confirm the requested content is available with only the approved permissions.',
+    escalation: 'If approval is missing, the role conflicts with policy, or provisioning fails, send the request and authorization event details to the workspace owner.',
+  };
   if (/api|service|bug|error|crash|software|application|browser|exception/.test(issue)) return {
     source: 'troubleshooting_playbook', title: 'Trace the API error safely',
     summary: 'Capture one failing request and narrow down whether the fault is in the client, API, or a downstream service.',
@@ -547,10 +559,9 @@ export function TicketDetailPage() {
               {resolutionRecommendationError && <Notice variant="warning">{resolutionRecommendationError}</Notice>}
               {resolutionRecommendation && (
                 <div className="ticket-guidance-result">
-                  <div className="ticket-guidance-title"><ListChecks size={18} /><div><span className="eyebrow">{resolutionRecommendation.source === 'similar_resolved_ticket' ? `Similar resolved ticket · ${resolutionRecommendation.precedent?.ticketNumber}` : 'Issue-matched playbook'}</span><h3>{resolutionRecommendation.title}</h3></div></div>
+                  <div className="ticket-guidance-title"><ListChecks size={18} /><div><span className="eyebrow">Based on this ticket</span><h3>{resolutionRecommendation.title}</h3></div></div>
                   <p>{resolutionRecommendation.summary}</p>
-                  {resolutionRecommendation.precedent && <div className="ticket-guidance-precedent"><strong>Previous resolution to verify</strong><p>{resolutionRecommendation.precedent.resolution}</p></div>}
-                  <ol className="ticket-guidance-steps">{resolutionRecommendation.steps.map((step, index) => <li key={`${index}-${step}`}><span>{index + 1}</span><p>{step}</p></li>)}</ol>
+                  <ul className="ticket-guidance-steps">{resolutionRecommendation.steps.map((step, index) => <li key={`${index}-${step}`}><span aria-hidden="true">•</span><p>{step}</p></li>)}</ul>
                   <div className="ticket-guidance-checks"><div><strong>Verify</strong><p>{resolutionRecommendation.verification}</p></div><div><strong>Escalate when</strong><p>{resolutionRecommendation.escalation}</p></div></div>
                   <div className="ticket-guidance-footer"><small>Guidance only—check the current environment and follow your team’s change process. No ticket or system changes are made by this recommendation.</small><button type="button" className="button button-ghost button-small" onClick={() => void getResolutionRecommendation()} disabled={resolutionRecommendationBusy}><RefreshCw size={14} /> Refresh</button></div>
                 </div>
