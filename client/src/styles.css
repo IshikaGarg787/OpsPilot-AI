@@ -1543,6 +1543,13 @@ body { background: var(--bg); color: var(--text); }
 .recommendation-evidence-row span { color: var(--muted); font-size: .72rem; }
 .recommendation-result-actions { display: flex; flex-wrap: wrap; gap: 9px; }
 .recommendation-result-actions .button { align-items: center; display: inline-flex; gap: 7px; }
+.workload-recommendation-link { align-items: center; background: var(--surface-soft); border: 1px solid var(--border); border-radius: 12px; color: var(--text-soft); display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-between; padding: 12px 16px; }
+.workload-recommendation-link a { align-items: center; color: var(--blue); display: inline-flex; font-size: .78rem; font-weight: 700; gap: 6px; }
+.recommendation-summary-row.ticket-row { grid-template-areas: none; grid-template-columns: 38px minmax(0, 1fr) auto; gap: 12px; padding: 14px 8px; }
+.recommendation-summary-row .ticket-row-icon, .recommendation-summary-row .ticket-row-main { grid-area: auto; }
+.recommendation-summary-row .ticket-row-main strong { overflow-wrap: anywhere; }
+.recommendation-summary-row .neutral-pill { flex: 0 0 auto; white-space: nowrap; }
+@media (max-width: 380px) { .recommendation-summary-row.ticket-row { grid-template-columns: 30px minmax(0, 1fr); }.recommendation-summary-row .neutral-pill { grid-column: 2; justify-self: start; } }
 @media (max-width: 950px) { .recommendation-engine-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }.recommendation-history-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 950px) { .recommendation-results-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }.recommendation-result-details { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 680px) { .recommendation-functions, .recommendation-results-grid { grid-template-columns: minmax(0, 1fr); }.recommendation-history-stats { grid-template-columns: minmax(0, 1fr); }.recommendation-page-actions { width: 100%; }.recommendation-page-actions .button { flex: 1; }.recommendation-ticket-meta a { margin-left: 0; }.recommendation-result-actions { align-items: stretch; flex-direction: column; }.recommendation-result-actions .button { justify-content: center; } }
