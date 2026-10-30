@@ -1,15 +1,52 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { AlertTriangle, ArrowRight, CheckCircle2, Clock3, Download, FileUp, MessageSquareText, Paperclip, Plus, RefreshCw, ShieldAlert, Sparkles, Ticket as TicketIcon } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CheckCircle2, Clock3, Download, FileUp, Lightbulb, ListChecks, MessageSquareText, Paperclip, Plus, RefreshCw, ShieldAlert, Sparkles, Ticket as TicketIcon } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Card, EmptyState, ErrorState, LoadingState, Notice, PageIntro } from '../components/ui';
 import { CustomerTicketsTable } from '../components/CustomerTicketsTable';
 import { api, ApiError } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import type { ModelMetadata, Ticket, TicketStatus } from '../types';
+import type { ModelMetadata, ResolutionRecommendation, Ticket, TicketStatus } from '../types';
 
 const statusText = (status: TicketStatus) => status.replaceAll('_', ' ');
 const hoursText = (hours?: number | null) => hours == null ? 'Unavailable' : hours > 24 ? `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(hours / 24)} days` : `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(hours)} hours`;
 const statusClass = (status: TicketStatus) => `ticket-status ticket-status-${status}`;
+
+function localResolutionFallback(ticket: Ticket): ResolutionRecommendation {
+  const issue = `${ticket.category} ${ticket.subject} ${ticket.description}`.toLowerCase();
+  if (/api|service|bug|error|crash|software|application|browser|exception/.test(issue)) return {
+    source: 'troubleshooting_playbook', title: 'Trace the API error safely',
+    summary: 'Capture one failing request and narrow down whether the fault is in the client, API, or a downstream service.',
+    steps: [
+      'Record the endpoint, time, request or correlation ID, status code, and whether other users are affected.',
+      'Check API health and logs for the same timestamp; follow the first failing dependency in the request path.',
+      'Compare with a known working request and review recent deployments or configuration changes.',
+      'Reproduce in a safe environment before changing production settings; do not retry non-idempotent requests blindly.',
+    ],
+    verification: 'Repeat the original request and confirm the expected response, then check error rates for the affected endpoint.',
+    escalation: 'If multiple users or production traffic are affected, escalate with timestamps, request IDs, status codes, and the first failing dependency.',
+  };
+  if (/network|connection|connectivity|vpn|dns|wifi|wi-fi|internet/.test(issue)) return {
+    source: 'troubleshooting_playbook', title: 'Isolate the connection issue',
+    summary: 'Determine whether one device, network, or multiple users are affected before changing configuration.',
+    steps: ['Record affected users, devices, location, connection type, and start time.', 'Check service health and whether other approved services are reachable.', 'Compare with a known-working device or approved network without changing security settings.', 'Capture the exact error and relevant DNS, VPN, or connection diagnostics.'],
+    verification: 'Ask the affected user to repeat the original workflow and confirm the connection remains stable.',
+    escalation: 'Escalate with the affected scope, timestamps, exact error, and diagnostics if more than one user is affected or the issue persists.',
+  };
+  if (/access|login|log in|permission|account|authentication|sign in|sso/.test(issue)) return {
+    source: 'troubleshooting_playbook', title: 'Check account access safely',
+    summary: 'Confirm which service and permission are failing before making account changes.',
+    steps: ['Confirm the affected user, service, exact error, and when access last worked.', 'Check that the account is active and has the expected team or role membership.', 'Review sign-in or authorization logs and keep any request ID.', 'Test with an approved least-privilege account; never ask for or share passwords.'],
+    verification: 'Have the user repeat the original sign-in or workflow and confirm the expected access.',
+    escalation: 'Escalate with the user ID, service, timestamp, and log or request ID if access remains blocked.',
+  };
+  return {
+    source: 'troubleshooting_playbook', title: 'Start with a safe diagnostic checklist',
+    summary: 'Gather enough evidence to narrow the cause before changing a system.',
+    steps: ['Confirm the affected service, user or device, business impact, and start time.', 'Record the exact reproduction steps and complete error or request ID.', 'Check service health and recent changes, then compare a known-working environment.', 'Try only an approved, reversible diagnostic step and record the outcome.'],
+    verification: 'Confirm the original issue is resolved with the affected user and check related service health.',
+    escalation: 'If the issue persists or a step could affect production, stop and escalate with timestamps, exact errors, and checks already completed.',
+  };
+}
 
 export function TicketListPage() {
   const { user } = useAuth();
@@ -300,6 +337,9 @@ export function TicketDetailPage() {
   const [priority, setPriority] = useState('');
   const [adminNote, setAdminNote] = useState('');
   const [recommendationAction, setRecommendationAction] = useState<'priority_review' | 'standard_queue'>('priority_review');
+  const [resolutionRecommendation, setResolutionRecommendation] = useState<ResolutionRecommendation | null>(null);
+  const [resolutionRecommendationBusy, setResolutionRecommendationBusy] = useState(false);
+  const [resolutionRecommendationError, setResolutionRecommendationError] = useState('');
 
   async function load() {
     setError('');
@@ -315,7 +355,12 @@ export function TicketDetailPage() {
     }
   }
 
-  useEffect(() => { void load(); }, [ticketId, admin]);
+  useEffect(() => {
+    setTicket(null);
+    setResolutionRecommendation(null);
+    setResolutionRecommendationError('');
+    void load();
+  }, [ticketId, admin]);
 
   async function run(action: () => Promise<unknown>) {
     setBusy(true);
@@ -341,6 +386,20 @@ export function TicketDetailPage() {
       setMessage('');
       setResolutionNote('');
     });
+  }
+
+  async function getResolutionRecommendation() {
+    setResolutionRecommendationBusy(true);
+    setResolutionRecommendationError('');
+    setResolutionRecommendation(localResolutionFallback(ticket!));
+    try {
+      const result = await api.tickets.resolutionRecommendation(ticketId);
+      setResolutionRecommendation(result.recommendation);
+    } catch {
+      setResolutionRecommendationError('Could not check your resolved ticket history. Showing an issue-matched checklist you can use now.');
+    } finally {
+      setResolutionRecommendationBusy(false);
+    }
   }
 
   async function download(id: string, fileName: string) {
@@ -447,6 +506,28 @@ export function TicketDetailPage() {
               </div>
             )}
           </Card>
+
+          {itTeam && assignedToCurrentUser && !['resolved', 'closed'].includes(ticket.status) && (
+            <Card title="Resolution recommendation" className="ticket-resolution-recommendation">
+              <p className="ticket-guidance-intro">Get a safe troubleshooting path for this ticket. OpsPilot checks your resolved IT tickets for a similar case first; if none fits, it uses a checklist matched to the issue.</p>
+              {!resolutionRecommendation && (
+                <button className="button button-secondary" type="button" onClick={() => void getResolutionRecommendation()} disabled={resolutionRecommendationBusy}>
+                  {resolutionRecommendationBusy ? <><span className="button-spinner" /> Preparing guidance…</> : <><Lightbulb size={16} /> Get resolution recommendation</>}
+                </button>
+              )}
+              {resolutionRecommendationError && <Notice variant="warning">{resolutionRecommendationError}</Notice>}
+              {resolutionRecommendation && (
+                <div className="ticket-guidance-result">
+                  <div className="ticket-guidance-title"><ListChecks size={18} /><div><span className="eyebrow">{resolutionRecommendation.source === 'similar_resolved_ticket' ? `Similar resolved ticket · ${resolutionRecommendation.precedent?.ticketNumber}` : 'Issue-matched playbook'}</span><h3>{resolutionRecommendation.title}</h3></div></div>
+                  <p>{resolutionRecommendation.summary}</p>
+                  {resolutionRecommendation.precedent && <div className="ticket-guidance-precedent"><strong>Previous resolution to verify</strong><p>{resolutionRecommendation.precedent.resolution}</p></div>}
+                  <ol className="ticket-guidance-steps">{resolutionRecommendation.steps.map((step, index) => <li key={`${index}-${step}`}><span>{index + 1}</span><p>{step}</p></li>)}</ol>
+                  <div className="ticket-guidance-checks"><div><strong>Verify</strong><p>{resolutionRecommendation.verification}</p></div><div><strong>Escalate when</strong><p>{resolutionRecommendation.escalation}</p></div></div>
+                  <div className="ticket-guidance-footer"><small>Guidance only—check the current environment and follow your team’s change process. No ticket or system changes are made by this recommendation.</small><button type="button" className="button button-ghost button-small" onClick={() => void getResolutionRecommendation()} disabled={resolutionRecommendationBusy}><RefreshCw size={14} /> Refresh</button></div>
+                </div>
+              )}
+            </Card>
+          )}
 
           {customer && (
             <Card title="Progress timeline">
