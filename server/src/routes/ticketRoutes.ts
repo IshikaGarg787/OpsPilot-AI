@@ -16,7 +16,7 @@ import { buildCustomerActivity, customerTicketFilter, CUSTOMER_ESTIMATE_PROJECT,
 import { buildQueueWorkloadHistory } from '../services/queueWorkloadHistory.js';
 import { assignAutomaticPriority } from '../services/automaticPriority.js';
 import { recommendResolution } from '../services/resolutionRecommendationService.js';
-import { recommendAssignee } from '../services/recommendationEngine.js';
+import { rankAssignees, recommendAssignee } from '../services/recommendationEngine.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -84,10 +84,41 @@ async function serialize(ticket: any, role: string, includeDetails = true) {
 }
 
 router.get('/assignees', requireRole('admin'), asyncHandler(async (_req, res) => {
-  const users = await UserModel.find({ role: 'it_team' }).sort({ name: 1 }).select('name email skills setupPending').lean();
-  const counts = await TicketModel.aggregate([{ $match: { assignedTo: { $in: users.map((user: any) => user._id) }, status: { $nin: ['resolved', 'closed'] } } }, { $group: { _id: '$assignedTo', count: { $sum: 1 } } }]);
-  const active = new Map(counts.map((row: any) => [String(row._id), row.count]));
-  res.json({ success: true, data: { users: users.map((user: any) => { const activeTickets = active.get(String(user._id)) ?? 0; return { id: String(user._id), name: user.name, email: user.email, skills: user.skills ?? [], activeTickets, availability: user.setupPending || activeTickets ? 'unavailable' : 'available' }; }) } });
+  const users = await UserModel.find({ role: 'it_team', setupPending: { $ne: true } }).sort({ name: 1 }).select('name email skills').lean();
+  const ticketId = typeof _req.query.ticketId === 'string' ? _req.query.ticketId : '';
+  let issueType = '';
+  let project = '';
+  if (ticketId) {
+    if (!/^[a-f\d]{24}$/i.test(ticketId)) throw new HttpError(400, 'Choose a valid ticket.', 'INVALID_TICKET_ID');
+    const ticket: any = await TicketModel.findById(ticketId).select('category project subject description ownerRole').lean();
+    if (!ticket) throw new HttpError(404, 'Ticket not found.', 'TICKET_NOT_FOUND');
+    if (ticket.ownerRole !== 'customer') throw new HttpError(400, 'Assignment recommendations are for customer raised tickets.', 'NOT_CUSTOMER_TICKET');
+    issueType = `${ticket.category} ${ticket.subject} ${ticket.description}`;
+    project = ticket.project;
+  }
+  const metrics = users.length ? await TicketModel.aggregate([
+    { $match: { assignedTo: { $in: users.map((user: any) => user._id) } } },
+    { $group: {
+      _id: '$assignedTo',
+      unresolvedTickets: { $sum: { $cond: [{ $in: ['$status', ['open', 'triaged', 'assigned', 'in_progress', 'waiting_customer']] }, 1, 0] } },
+      slaBreaches: { $sum: { $add: [
+        { $cond: [{ $eq: ['$slaSnapshot.firstResponseStatus', 'breached'] }, 1, 0] },
+        { $cond: [{ $eq: ['$slaSnapshot.resolutionStatus', 'breached'] }, 1, 0] },
+      ] } },
+    } },
+  ]) : [];
+  const byMember = new Map(metrics.map((metric: any) => [String(metric._id), metric]));
+  const candidates = users.map((user: any) => {
+    const metric: any = byMember.get(String(user._id)) ?? {};
+    return { id: String(user._id), name: user.name, email: user.email, skills: user.skills ?? [], activeTickets: metric.unresolvedTickets ?? 0, slaBreaches: metric.slaBreaches ?? 0 };
+  });
+  const ranked = rankAssignees(candidates, issueType, project);
+  res.json({ success: true, data: { users: ranked.map((member, index) => ({
+    ...member,
+    email: candidates.find((candidate) => candidate.id === member.id)?.email ?? '',
+    rank: index + 1,
+    recommended: index === 0,
+  })) } });
 }));
 
 router.post('/', requireRole('customer', 'it_team'), asyncHandler(async (req, res) => {

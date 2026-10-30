@@ -356,8 +356,7 @@ export function TicketDetailPage() {
   const customer = user?.role === 'customer';
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
-  const [assignees, setAssignees] = useState<Array<{ id: string; name: string; email: string; skills: string[]; activeTickets: number; availability: 'available' | 'unavailable' }>>([]);
-  const [fallbackSuggestion, setFallbackSuggestion] = useState<{ id: string; name: string; activeTickets: number; matchingSkills: string[] } | null>(null);
+  const [assignees, setAssignees] = useState<Array<{ id: string; name: string; email: string; skills: string[]; activeTickets: number; slaBreaches: number; matchingSkills: string[]; availability: 'available' | 'unavailable'; rank: number; recommended: boolean }>>([]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -380,10 +379,8 @@ export function TicketDetailPage() {
       setStatus(next.status);
       setRecommendationAction(next.recommendation?.action ?? 'priority_review');
       if (admin) {
-        const team = (await api.tickets.assignees()).users;
+        const team = (await api.tickets.assignees(next.ownerRole === 'customer' ? ticketId : undefined)).users;
         setAssignees(team);
-        const suggested = team.filter((member) => member.availability !== 'unavailable').sort((a, b) => a.activeTickets - b.activeTickets || a.name.localeCompare(b.name))[0];
-        setFallbackSuggestion(!next.assignedTo && !next.aiSignals?.recommendedAssignee && suggested ? { id: suggested.id, name: suggested.name, activeTickets: suggested.activeTickets, matchingSkills: [] } : null);
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'This ticket is unavailable.');
@@ -465,7 +462,8 @@ export function TicketDetailPage() {
   const canUpdateStatus = admin || canManageAsIT;
   const estimatePassed = !!ticket.estimatedResolutionAt && Date.now() > new Date(ticket.estimatedResolutionAt).getTime();
   const inputLanguageLabel = ({ auto: 'Mixed / auto', hindi: 'Hindi', english: 'English', hinglish: 'Hinglish' } as const)[ticket.inputLanguage ?? 'auto'];
-  const suggestedAssignee = ticket.aiSignals?.recommendedAssignee ?? fallbackSuggestion;
+  const suggestedAssignee = assignees[0] ?? ticket.aiSignals?.recommendedAssignee ?? null;
+  const hasAvailableAssignee = assignees.some((member) => member.availability === 'available');
 
   return (
     <div className="page-stack ticket-page-wrapper">
@@ -778,12 +776,17 @@ export function TicketDetailPage() {
 
             {admin && (
               <Card title="Admin controls" className="action-card-admin">
-                {suggestedAssignee && (
-                  <div className="recommendation-review">
-                    <span className="eyebrow">{ticket.assignedTo?.id === suggestedAssignee.id ? 'Automatic assignment' : 'Assignment suggestion'}</span>
-                    <strong>{ticket.assignedTo?.id === suggestedAssignee.id ? `Assigned to ${suggestedAssignee.name}` : suggestedAssignee.name}</strong>
-                    <small>Lowest active workload is preferred; matching skills break ties. {suggestedAssignee.activeTickets} active tickets at assignment time{suggestedAssignee.matchingSkills?.length ? ` · skills: ${suggestedAssignee.matchingSkills.join(', ')}` : ''}.</small>
-                    {ticket.assignedTo?.id !== suggestedAssignee.id && <button className="button button-secondary button-small" disabled={busy} onClick={() => void run(() => api.tickets.assign(ticket.id, suggestedAssignee.id))}>Assign suggested teammate</button>}
+                {ticket.ownerRole === 'customer' && assignees.length > 0 && (
+                  <div className="assignment-recommendations">
+                    <div className="assignment-recommendations-heading"><span className="eyebrow">Recommended IT members</span><small>{hasAvailableAssignee ? 'Available members are ranked first, then skill match and SLA record.' : 'Everyone has unresolved work; the smallest queue is ranked first, then skill match and SLA record.'}</small></div>
+                    <div className="assignment-recommendation-list">
+                      {assignees.slice(0, 3).map((person) => <article className={`assignment-recommendation ${person.recommended ? 'top-recommendation' : ''}`} key={person.id}>
+                        <div className="assignment-recommendation-main"><span className="assignment-rank">{person.recommended ? 'Best match' : `#${person.rank}`}</span><strong>{person.name}</strong><span className={`role-badge role-${person.availability}`}>{person.availability}</span></div>
+                        <p>{person.activeTickets} unresolved · {person.slaBreaches} SLA breaches · {person.matchingSkills.length ? `Skills: ${person.matchingSkills.join(', ')}` : 'No matching skill recorded'}</p>
+                        {ticket.assignedTo?.id !== person.id && <button className="button button-secondary button-small" type="button" disabled={busy} onClick={() => void run(() => api.tickets.assign(ticket.id, person.id))}>{person.recommended ? 'Assign recommended member' : 'Assign this member'}</button>}
+                        {ticket.assignedTo?.id === person.id && <span className="neutral-pill">Currently assigned</span>}
+                      </article>)}
+                    </div>
                   </div>
                 )}
                 {ticket.ownerRole !== 'it_team' && <label className="field">
@@ -794,8 +797,8 @@ export function TicketDetailPage() {
                   >
                     <option value="">Unassigned</option>
                     {assignees.map((person) => (
-                      <option key={person.id} value={person.id} disabled={person.availability === 'unavailable' && person.id !== ticket.assignedTo?.id}>
-                        {person.name} · {person.availability} · {person.activeTickets} active · {person.skills.join(', ') || 'skills not set'}
+                      <option key={person.id} value={person.id} disabled={hasAvailableAssignee && person.availability === 'unavailable' && person.id !== ticket.assignedTo?.id}>
+                        #{person.rank} {person.name} · {person.availability} · {person.activeTickets} unresolved · {person.slaBreaches} SLA breaches · {person.matchingSkills.join(', ') || 'no matching skill'}
                       </option>
                     ))}
                   </select>
