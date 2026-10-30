@@ -14,8 +14,9 @@ from typing import Any
 import joblib
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
+from ml.model_auth import require_model_token
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -206,7 +207,7 @@ def health():
 
 
 @app.post("/predict/delay-risk")
-def predict_delay_risk(request: DelayRiskRequest):
+def predict_delay_risk(request: DelayRiskRequest, _auth: None = Depends(require_model_token)):
     try:
         bundle = load_bundle()
         history = load_history()

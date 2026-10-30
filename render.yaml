@@ -1,0 +1,65 @@
+services:
+  - type: web
+    name: opspilot-aigarg-api
+    runtime: node
+    region: singapore
+    plan: free
+    buildCommand: npm ci --prefix server && npm --prefix server run build
+    startCommand: npm --prefix server start
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - fromGroup: opspilot-model-access
+      - key: ML_SERVICE_URL
+        fromService:
+          type: web
+          name: opspilot-aigarg-resolution
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: DELAY_RISK_SERVICE_URL
+        fromService:
+          type: web
+          name: opspilot-aigarg-delayrisk
+          envVarKey: RENDER_EXTERNAL_URL
+
+  - type: web
+    name: opspilot-aigarg-resolution
+    runtime: python
+    region: singapore
+    plan: free
+    buildCommand: pip install -r ml/requirements.txt
+    startCommand: uvicorn ml.resolution_api:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.11
+      - key: NODE_ENV
+        value: production
+      - fromGroup: opspilot-model-access
+
+  - type: web
+    name: opspilot-aigarg-delayrisk
+    runtime: python
+    region: singapore
+    plan: free
+    buildCommand: pip install -r ml/requirements-delay-risk.txt
+    startCommand: uvicorn ml.delay_risk_service:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.11
+      - key: NODE_ENV
+        value: production
+      - fromGroup: opspilot-model-access
+
+envVarGroups:
+  - name: opspilot-model-access
+    envVars:
+      - key: MODEL_API_TOKEN
+        generateValue: true

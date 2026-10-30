@@ -10,7 +10,15 @@ async function request(path: string, init: RequestInit = {}, timeoutMs = 6000, b
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(`${baseUrl}${path}`, { ...init, signal: controller.signal, headers: { 'content-type': 'application/json', ...(init.headers ?? {}) } });
+    const response = await fetch(`${baseUrl}${path}`, {
+      ...init,
+      signal: controller.signal,
+      headers: {
+        'content-type': 'application/json',
+        ...(env.modelApiToken ? { 'x-model-token': env.modelApiToken } : {}),
+        ...(init.headers ?? {}),
+      },
+    });
     const body = await response.json().catch(() => null) as Record<string, unknown> | null;
     if (!response.ok) {
       const message = typeof body?.detail === 'string' ? body.detail : 'The model service rejected the request.';
@@ -40,7 +48,7 @@ export function getMlMetadata() {
 }
 
 export function predictResolution(payload: Record<string, string>) {
-  return request('/predict/resolution-time', { method: 'POST', body: JSON.stringify(payload) }, 10000);
+  return request('/predict/resolution-time', { method: 'POST', body: JSON.stringify(payload) }, 120000);
 }
 
 export async function checkWorkloadForecastHealth() {
@@ -62,9 +70,9 @@ export async function checkDelayRiskHealth() {
 }
 
 export function predictDelayRisk(payload: Record<string, string>) {
-  return request('/predict/delay-risk', { method: 'POST', body: JSON.stringify(payload) }, 45000, env.delayRiskServiceUrl);
+  return request('/predict/delay-risk', { method: 'POST', body: JSON.stringify(payload) }, 120000, env.delayRiskServiceUrl);
 }
 
 export function forecastWorkload(records: Record<string, unknown>[], horizon: 7 | 14) {
-  return request('/forecast/workload', { method: 'POST', body: JSON.stringify({ records, horizon }) }, 60000);
+  return request('/forecast/workload', { method: 'POST', body: JSON.stringify({ records, horizon }) }, 180000);
 }
