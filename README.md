@@ -1,7 +1,7 @@
 # Pragya — Turn ticket history into clearer support decisions
 
 <p align="center">
-  <img src="client/public/assets/pragya-mark.png" alt="Pragya logo" width="150" />
+  <img src="docs/assets/pragya-logo-readme.png" alt="Pragya logo" width="150" />
 </p>
 
 <h3 align="center">One workspace for tickets, delay risk, resolution estimates, and workload planning.</h3>
@@ -16,11 +16,11 @@ These are the deployment addresses supplied for this project:
 
 | Part | Link | What it is |
 | --- | --- | --- |
-| Web app | [ops-pilot-ai-flax.vercel.app](https://ops-pilot-ai-flax.vercel.app/) | The website you open and use in your browser. |
-| Backend API | [opspilot-aigarg-api.onrender.com](https://opspilot-aigarg-api.onrender.com/) | The server that handles sign-in, tickets, permissions, and data. |
+| Web app | [Open Pragya](https://ops-pilot-ai-flax.vercel.app/) | The website you open and use in your browser. |
+| Backend API | [API service](https://opspilot-aigarg-api.onrender.com/) | The server that handles sign-in, tickets, permissions, and data. |
 | API readiness check | [Check API readiness](https://opspilot-aigarg-api.onrender.com/api/v1/health/ready) | Reports whether the API and required connected services are ready. |
-| Model 1: delay risk | [opspilot-aigarg-delayrisk.onrender.com](https://opspilot-aigarg-delayrisk.onrender.com/) | Estimates the chance that a ticket will take a long time to resolve. |
-| Model 2: resolution and workload | [opspilot-aigarg-resolution.onrender.com](https://opspilot-aigarg-resolution.onrender.com/) | Estimates resolution time and creates workload forecasts. |
+| Model 1: delay risk | [Delay-risk model service](https://opspilot-aigarg-delayrisk.onrender.com/) | Estimates the chance that a ticket will take a long time to resolve. |
+| Model 2: resolution and workload | [Resolution and workload model service](https://opspilot-aigarg-resolution.onrender.com/) | Estimates resolution time and creates workload forecasts. |
 
 The model addresses are service endpoints, not separate user-facing apps. Use Pragya through the web app. A free hosting service may take a little while to wake up after being idle. The readiness link is the useful check for the backend; a sleeping or unreachable model can make prediction features temporarily unavailable.
 
@@ -141,7 +141,7 @@ The model services need their Python packages and saved artifacts. The delay-ris
 
 ### 1. Install dependencies
 
-Open PowerShell in the project folder (`D:\PilotAI\OpsPilot-AI`) and run:
+Open PowerShell in the project folder and run:
 
 ```powershell
 py -3.12 -m venv .venv312
@@ -229,7 +229,7 @@ For local service readiness checks, see [`docs/LOCAL_SETUP.md`](docs/LOCAL_SETUP
 ## Project map
 
 ```text
-OpsPilot-AI/
+Project root/
 ├── client/                 React + TypeScript website (Vite)
 │   ├── public/assets/      Logo and public assets
 │   └── src/                Pages, shared components, API client, styles
