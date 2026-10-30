@@ -1,7 +1,4 @@
-import { TicketModel } from '../models/Ticket.js';
-
 export interface ResolutionTicketContext {
-  _id?: unknown;
   ticketNumber: string;
   subject: string;
   description: string;
@@ -9,50 +6,19 @@ export interface ResolutionTicketContext {
   project: string;
 }
 
-interface ResolvedTicketContext extends ResolutionTicketContext {
-  responses?: Array<{ resolutionNote?: string }>;
-}
-
 export interface ResolutionRecommendation {
-  source: 'similar_resolved_ticket' | 'troubleshooting_playbook';
+  source: 'troubleshooting_playbook';
   title: string;
   summary: string;
   steps: string[];
   verification: string;
   escalation: string;
-  precedent?: { ticketNumber: string; resolution: string };
-}
-
-const stopWords = new Set(['about', 'after', 'also', 'and', 'are', 'can', 'could', 'from', 'have', 'into', 'issue', 'just', 'need', 'please', 'that', 'the', 'this', 'ticket', 'with', 'your', 'you']);
-
-function normalizeWords(value: string) {
-  return new Set((value.toLowerCase().match(/[a-z0-9]{3,}/g) ?? []).filter((word) => !stopWords.has(word)));
-}
-
-function similarityScore(current: ResolutionTicketContext, previous: ResolutionTicketContext) {
-  const currentWords = normalizeWords(`${current.subject} ${current.description} ${current.category} ${current.project}`);
-  const previousWords = normalizeWords(`${previous.subject} ${previous.description} ${previous.category} ${previous.project}`);
-  const union = new Set([...currentWords, ...previousWords]);
-  const overlap = [...currentWords].filter((word) => previousWords.has(word)).length;
-  const textSimilarity = union.size ? overlap / union.size : 0;
-  const categoryMatch = current.category.trim().toLowerCase() === previous.category.trim().toLowerCase();
-  const projectMatch = current.project.trim().toLowerCase() === previous.project.trim().toLowerCase();
-  return textSimilarity * 0.5 + (categoryMatch ? 0.3 : 0) + (projectMatch ? 0.2 : 0);
-}
-
-function cleanText(value: string) {
-  return value
-    .replace(/\bBearer\s+[A-Za-z0-9._~+/-]+=*/gi, 'Bearer [redacted]')
-    .replace(/\b(password|passwd|token|secret|api[_ -]?key)\s*[:=]\s*[^\s,;]+/gi, '$1=[redacted]')
-    .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[email]')
-    .replace(/\b(?:\d[ -]*?){13,19}\b/g, '[number redacted]')
-    .trim()
-    .slice(0, 900);
 }
 
 function issueKind(ticket: ResolutionTicketContext) {
   const text = `${ticket.category} ${ticket.subject} ${ticket.description}`.toLowerCase();
   if (/network|connection|connectivity|vpn|dns|wifi|wi-fi|internet/.test(text)) return 'network';
+  if (/analytics|workspace|data portal|reporting workspace/.test(text) && /access|permission|role|grant|entitlement|cannot open|can't open|unable to open/.test(text)) return 'workspace_access';
   if (/access|login|log in|permission|account|authentication|sign in|sso/.test(text)) return 'access';
   if (/hardware|laptop|desktop|printer|monitor|keyboard|device|power/.test(text)) return 'hardware';
   if (/report|export|data|sync|import|dashboard|record/.test(text)) return 'data';
@@ -61,6 +27,16 @@ function issueKind(ticket: ResolutionTicketContext) {
 }
 
 const playbooks: Record<string, { title: string; summary: string; steps: string[] }> = {
+  workspace_access: {
+    title: 'Restore analytics workspace access',
+    summary: 'Check the user’s workspace membership and approved role, then correct only the missing entitlement.',
+    steps: [
+      'Confirm the requester’s account, the exact analytics workspace, and the role they need; check that the request has data-owner approval.',
+      'Check the account is active and compare its workspace group or role with a teammate who has the approved access.',
+      'If the approved group is missing, add the user to that group or provision the requested least-privilege role; do not grant workspace-admin access as a shortcut.',
+      'Have the user sign out and back in to refresh SSO. If membership is already correct, inspect the workspace authorization or provisioning event at the reported time.',
+    ],
+  },
   access: {
     title: 'Check account access safely',
     summary: 'Start by confirming who is affected and which service or permission is failing.',
@@ -132,35 +108,6 @@ export function buildFallbackRecommendation(ticket: ResolutionTicketContext): Re
   };
 }
 
-export function buildResolutionRecommendation(ticket: ResolutionTicketContext, previousTickets: ResolvedTicketContext[]): ResolutionRecommendation {
-  const precedent = previousTickets
-    .map((previous) => ({ previous, score: similarityScore(ticket, previous), note: previous.responses?.slice().reverse().find((response) => response.resolutionNote?.trim())?.resolutionNote }))
-    .filter((match): match is typeof match & { note: string } => Boolean(match.note?.trim()))
-    .sort((a, b) => b.score - a.score)[0];
-
-  if (!precedent || precedent.score < 0.3) return buildFallbackRecommendation(ticket);
-  return {
-    source: 'similar_resolved_ticket',
-    title: 'Check a similar resolved ticket',
-    summary: 'A resolved ticket from your own IT work has matching issue context. Treat its resolution as a lead to verify, not as a guaranteed fix.',
-    steps: [
-      'Compare the affected service, environment, and error with the prior ticket before reusing its approach.',
-      'Follow the prior resolution only if the same cause is present and the action is approved for this environment.',
-      'If the symptoms differ, use the safe diagnostic checks below and do not repeat a production change blindly.',
-    ],
-    verification: 'Ask the affected user to repeat the original workflow and confirm the issue no longer occurs.',
-    escalation: 'If the prior fix does not apply or the issue remains, escalate with both ticket references and the new diagnostic evidence.',
-    precedent: { ticketNumber: precedent.previous.ticketNumber, resolution: cleanText(precedent.note) },
-  };
-}
-
-export async function recommendResolution(ticket: ResolutionTicketContext, userId: unknown) {
-  const previousTickets = await TicketModel.find({
-    $and: [
-      { $or: [{ assignedTo: userId }, { ownerUserId: userId, ownerRole: 'it_team' }] },
-      { status: { $in: ['resolved', 'closed'] } },
-      ...(ticket._id ? [{ _id: { $ne: ticket._id } }] : []),
-    ],
-  }).select('ticketNumber subject description category project responses').sort({ updatedAt: -1 }).limit(100).lean();
-  return buildResolutionRecommendation(ticket, previousTickets as unknown as ResolvedTicketContext[]);
+export function recommendResolution(ticket: ResolutionTicketContext) {
+  return buildFallbackRecommendation(ticket);
 }

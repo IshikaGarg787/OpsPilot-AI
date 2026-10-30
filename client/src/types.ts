@@ -138,13 +138,12 @@ export interface Ticket {
 }
 
 export interface ResolutionRecommendation {
-  source: 'similar_resolved_ticket' | 'troubleshooting_playbook';
+  source: 'troubleshooting_playbook';
   title: string;
   summary: string;
   steps: string[];
   verification: string;
   escalation: string;
-  precedent?: { ticketNumber: string; resolution: string };
 }
 
 export interface CustomerTicketEvent {
