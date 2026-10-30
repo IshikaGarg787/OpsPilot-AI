@@ -33,6 +33,8 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 
 Do not commit `.env` files. Defaults are for local development only.
 
+The dashboard support assistant retrieves role-appropriate help guidance and the signed-in user's authorized tickets, then uses Ollama locally to draft a grounded reply. It needs no API key. Install Ollama and run `ollama run llama3.2:3b` once (or replace the tag with your downloaded model). Set `OLLAMA_MODEL` in `server/.env` to that exact model tag if it differs from the default. Ollama must be running on the same host as the API at `http://127.0.0.1:11434`; the chat falls back to a retrieved text answer if the local service or model is unavailable. Prompts and ticket context stay on the API host.
+
 If npm reports blocked native install scripts, approve them from their package folders once:
 
 ```powershell
@@ -66,6 +68,8 @@ This starts MongoDB on `127.0.0.1:27017` and waits for its health check. Data pe
 | `server/.env` | `MONGODB_URI` | Required for account, history, dashboard, and persistence. |
 | `server/.env` | `ML_SERVICE_URL` | FastAPI base URL used by Express. |
 | `server/.env` | `DELAY_RISK_SERVICE_URL` | Version-pinned delay-risk FastAPI service used by Express. |
+| `server/.env` | `OLLAMA_BASE_URL` | Local Ollama endpoint (default `http://127.0.0.1:11434`). |
+| `server/.env` | `OLLAMA_MODEL` | Installed local model tag (default `llama3.2:3b`). |
 | `server/.env` | `SESSION_SECRET` | HMAC key for opaque session tokens; required in production. |
 | `server/.env` | `COOKIE_SECURE` | Set true when served over HTTPS. |
 | `server/.env` | `ML_ARTIFACT_DIR` | Resolution metrics location read by the API registry. |

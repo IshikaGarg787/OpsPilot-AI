@@ -9,6 +9,7 @@ import type { DashboardActivity, DashboardSummary, Ticket } from '../types';
 import { CustomerTicketsTable } from '../components/CustomerTicketsTable';
 import type { CustomerDashboardData } from '../types';
 import { AdminOperationsDashboard } from '../components/AdminOperationsDashboard';
+import { SupportChatWidget } from '../components/SupportChatWidget';
 
 const number = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
 const formatDuration = (hours?: number) => hours == null ? '—' : hours >= 24 ? `${number.format(hours / 24)}d` : `${number.format(hours)}h`;
@@ -72,6 +73,7 @@ function ItTeamDashboardPage() {
     {!tickets && !error && <LoadingState label="Loading your assignments" />}
     {tickets && <><div className="metrics-grid"><MetricCard label="Assigned to me" value={number.format(assigned.length)} detail="Tickets in your queue" icon={TicketIcon} accent="blue" /><MetricCard label="In progress" value={number.format(active.filter((ticket) => ticket.status === 'in_progress').length)} detail="Active work" icon={Gauge} accent="violet" /><MetricCard label="Waiting on customer" value={number.format(waiting.length)} detail="Next step needs a reply" icon={Clock3} accent="amber" /><MetricCard label="Completed" value={number.format(resolved.length)} detail="Resolved or closed" icon={CheckCircle2} accent="teal" /></div><MyAssignedWork /></>}
     <Card title="Team resources"><div className="role-resource-links"><Link to="/app/tickets/new"><Plus size={16} /> Report an internal issue <ArrowRight size={15} /></Link><Link to="/app/history"><History size={16} /> Review my AI estimates <ArrowRight size={15} /></Link></div></Card>
+    <SupportChatWidget />
   </div>;
 }
 
@@ -112,6 +114,7 @@ function CustomerDashboardPage() {
     {counts && <div className="metrics-grid customer-metrics"><MetricCard label="Total tickets" value={number.format(counts.total)} detail="Tickets you have raised" icon={TicketIcon} accent="blue" /><MetricCard label="Open" value={number.format(counts.open)} detail="Awaiting resolution" icon={Clock3} accent="amber" /><MetricCard label="In progress" value={number.format(counts.inProgress)} detail="Being worked on" icon={Gauge} accent="violet" /><MetricCard label="Resolved" value={number.format(counts.resolved)} detail="Resolved or closed" icon={Sparkles} accent="teal" /></div>}
     {dashboard && <Card title="Recent activity" className="customer-activity-card"><div className="customer-activity-list">{dashboard.activity.length ? dashboard.activity.map((event) => <Link to={`/app/tickets/${event.ticketId}`} className="customer-activity-item" key={event.id}><span className="customer-activity-icon"><Bell size={16} /></span><span className="customer-activity-copy"><strong>{event.label}</strong><small>{event.ticketNumber} · {event.subject}</small></span><time>{date(event.createdAt)}</time></Link>) : <EmptyState title="Your support activity will appear here" description="Ticket creation, assignment and customer-visible status updates will be listed here." action={<Link className="button button-secondary" to="/app/tickets/new">Raise your first ticket</Link>} />}</div></Card>}
     {dashboard && <CustomerTicketsTable pageSize={8} showViewAll />}
+    <SupportChatWidget />
   </div>;
 }
 

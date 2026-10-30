@@ -19,6 +19,22 @@ Invoke-RestMethod http://localhost:5000/api/v1/health/ready
 
 `/health` checks API liveness. `/health/ready` checks MongoDB connectivity and the FastAPI model service and returns HTTP 503 when either dependency is unavailable.
 
+## Support assistant (Customer and IT Team)
+
+`POST /support-chat` is authenticated and limited to Customer and IT Team roles. It accepts the last 1–12 user/assistant messages (`content` up to 2,000 characters each) and returns an answer with mode `static_data`, `local_model`, or `retrieval_only`. The server ranks role-appropriate workflow guidance and at most three relevant tickets from the signed-in user's own records (for IT Team: created or assigned tickets), omitting internal responses. Ticket data is redacted for common credentials, email addresses, and payment-card-like numbers. Common help questions and ticket status lookups receive deterministic replies from retrieved data. For other questions, reachable Ollama receives retrieved context at `OLLAMA_BASE_URL`; if it is unavailable, the API returns a static retrieval answer. No API key or external AI service is used. Chat transcripts are held in browser memory and are not persisted by OpsPilot. The assistant cannot change tickets, priority, assignments, or SLAs.
+
+This is retrieval-augmented generation, not model fine-tuning: the service retrieves built-in support guidance and authorized ticket context, then supplies those snippets to a pretrained local model. The current retriever uses lexical term overlap; it does not require a vector database or API key.
+
+```json
+{
+  "messages": [
+    { "role": "user", "content": "What does in progress mean?" }
+  ]
+}
+```
+
+Response: `{ "success": true, "data": { "answer": "..." } }`.
+
 ## Auth
 
 ### Signup

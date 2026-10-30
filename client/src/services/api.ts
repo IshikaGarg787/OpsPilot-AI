@@ -20,6 +20,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
+  supportChat: {
+    send: (messages: Array<{ role: 'user' | 'assistant'; content: string }>) => request<{ answer: string; mode: 'local_model' | 'static_data' | 'retrieval_only' }>('/support-chat', { method: 'POST', body: JSON.stringify({ messages }) }),
+  },
   auth: {
     me: () => request<{ user: User }>('/auth/me'),
     login: (payload: { email: string; password: string; remember: boolean; expectedRole: 'customer' | 'it_team' | 'admin' }) => request<{ user: User }>('/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
