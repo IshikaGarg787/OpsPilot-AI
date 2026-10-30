@@ -1,4 +1,4 @@
-# OpsPilot AI — Verification Report
+# Pragya — Verification Report
 
 **Run date:** 2026-10-29  
 **Project:** extracted from `OpsPilot-AI-live-forecast-integrated.zip`

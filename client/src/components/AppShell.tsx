@@ -162,7 +162,7 @@ export function AppShell() {
           </button>
           <div className="topbar-context">
             <div className="breadcrumb" aria-label="Breadcrumb">
-              <Link to="/app" className="breadcrumb-link">OpsPilot AI</Link>
+              <Link to="/app" className="breadcrumb-link">Pragya</Link>
               <span className="slash">/</span>
               {isWorkforceMemberPage ? <><Link to="/app/workforce" className="breadcrumb-link">IT Workforce</Link><span className="slash">/</span></> : null}
               <strong>{pageName}</strong>

@@ -108,7 +108,7 @@ export function ThemeToggle({ label = false }: { label?: boolean }) {
         <div className="theme-dropdown-menu" role="menu">
           <div className="theme-dropdown-header">
             <span>Theme options</span>
-            <small>Tailored for OpsPilot</small>
+            <small>Tailored for Pragya</small>
           </div>
           <div className="theme-dropdown-list">
             {themeOptions.map((opt) => {

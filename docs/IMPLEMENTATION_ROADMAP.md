@@ -1,4 +1,4 @@
-# OpsPilot AI — Phased Completion Roadmap
+# Pragya — Phased Completion Roadmap
 
 ## Working approach
 Complete one phase at a time. At each phase boundary, report the result, changed files, verification evidence, and any blocker; then move to the next phase. Keep the current implementation and artifacts unless inspection shows a specific reason to change them. Avoid scope expansion and run only the checks relevant to the phase.

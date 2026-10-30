@@ -77,10 +77,10 @@ export function SupportChatWidget() {
 
   return (
     <div className="support-chat-widget">
-      {open && <section className="support-chat-panel" aria-label="OpsPilot support chat">
+      {open && <section className="support-chat-panel" aria-label="Pragya support chat">
         <header className="support-chat-header">
           <span className="support-chat-avatar"><Bot size={20} /></span>
-          <span className="support-chat-heading"><strong>{isItTeam ? 'OpsPilot IT assistant' : 'OpsPilot assistant'}</strong><small><i /> Here to help · {isItTeam ? 'IT workspace' : 'Customer support'}</small></span>
+          <span className="support-chat-heading"><strong>{isItTeam ? 'Pragya IT assistant' : 'Pragya assistant'}</strong><small><i /> Here to help · {isItTeam ? 'IT workspace' : 'Customer support'}</small></span>
           <button type="button" className="icon-button" aria-label="Close support chat" onClick={() => setOpen(false)}><X size={19} /></button>
         </header>
         <div className="support-chat-privacy"><ShieldCheck size={14} /> Ollama runs locally on the API host; no API key or external AI service is used. Replies use relevant help guidance and your authorized tickets. Don’t share secrets.</div>

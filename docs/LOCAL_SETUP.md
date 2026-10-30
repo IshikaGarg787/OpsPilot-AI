@@ -107,7 +107,7 @@ npm --prefix server run dev
 npm --prefix client run dev
 ```
 
-Visit `http://localhost:5173`. The integrated ticket decision requires all three model services and MongoDB. Workload forecasting uses at least 120 days of actual OpsPilot customer-ticket history when available; otherwise, import daily totals from a help-desk export or the downloaded template. Forecast requests use Express and the main ML service; MongoDB is required for the authenticated session and saved history.
+Visit `http://localhost:5173`. The integrated ticket decision requires all three model services and MongoDB. Workload forecasting uses at least 120 days of actual Pragya customer-ticket history when available; otherwise, import daily totals from a help-desk export or the downloaded template. Forecast requests use Express and the main ML service; MongoDB is required for the authenticated session and saved history.
 
 Public signup cannot create the Admin account. To provision the fixed workspace owner, set the temporary `ADMIN_PROVISION_*` values in `server/.env` using the checklist in `docs/database-architecture.md`, run `npm --prefix server run admin:provision`, remove the initial password and confirmation values afterward, and sign in with the owner account.
 
