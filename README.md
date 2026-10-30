@@ -1,7 +1,7 @@
 # Pragya — Turn ticket history into clearer support decisions
 
 <p align="center">
-  <img src="docs/assets/pragya-logo-readme.png" alt="Pragya logo" width="150" />
+  <img src="client/public/assets/pragya-mark.svg" alt="Pragya logo" width="150" />
 </p>
 
 <h3 align="center">One workspace for tickets, delay risk, resolution estimates, and workload planning.</h3>
