@@ -16,7 +16,7 @@ These are the deployment addresses supplied for this project:
 
 | Part | Link | What it is |
 | --- | --- | --- |
-| Web app | [Open Pragya](https://ops-pilot-ai-flax.vercel.app/) | The website you open and use in your browser. |
+| Web app | [Open Pragya](https://pragya-adi.vercel.app/) | The website you open and use in your browser. |
 | Backend API | [API service](https://opspilot-aigarg-api.onrender.com/) | The server that handles sign-in, tickets, permissions, and data. |
 | API readiness check | [Check API readiness](https://opspilot-aigarg-api.onrender.com/api/v1/health/ready) | Reports whether the API and required connected services are ready. |
 | Model 1: delay risk | [Delay-risk model service](https://opspilot-aigarg-delayrisk.onrender.com/) | Estimates the chance that a ticket will take a long time to resolve. |
